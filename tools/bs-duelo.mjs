@@ -2,7 +2,7 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 const repo = process.env.REPO ?? process.cwd();
-const m = (p) => import(pathToFileURL(path.join(repo, 'js/games/blockstrike', p)).href);
+const m = (p) => import(pathToFileURL(path.join(repo, 'packages/sim/src', p)).href);
 const { MAPA } = await m('mapa.js');
 const { criarMundo, posicionarParaRound, passo } = await m('mundo.js');
 const { pensar, criarCerebro } = await m('bots.js');

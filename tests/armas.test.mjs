@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { mod } from './_repo.mjs';
 
 const { criarArma, podeAtirar, disparar, atualizarArma, iniciarRecarga, danoDe } =
-  await mod('js/games/blockstrike/armas.js');
-const { criarRng } = await mod('js/games/blockstrike/rng.js');
-const { ARMAS } = await mod('js/games/blockstrike/config.js');
+  await mod('packages/sim/src/armas.js');
+const { criarRng } = await mod('packages/sim/src/rng.js');
+const { ARMAS } = await mod('packages/sim/src/config.js');
 
 const PARADO = { velHoriz: 0, velMax: 5.5, noChao: true, agachado: false, zoom: false };
 const media = (lista) => lista.reduce((s, v) => s + Math.abs(v), 0) / lista.length;
@@ -156,7 +156,7 @@ test('o recuo desloca a mira para cima a cada tiro seguido', () => {
 });
 
 test('recuo tem teto', async () => {
-  const { RECUO_MAX } = await mod('js/games/blockstrike/config.js');
+  const { RECUO_MAX } = await mod('packages/sim/src/config.js');
   const a = criarArma('rifle');
   const rng = criarRng(5);
   let ultimo;

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Block Strike — C4 do modo desarme: sorteio do portador, plantar, desarmar, explodir e soltar ao morrer.
  * Módulo puro: sem Three.js e sem DOM. Unidades em metros e segundos.

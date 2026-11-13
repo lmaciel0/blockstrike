@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Block Strike — estado do mundo e movimento das entidades.
  * Módulo puro: sem Three.js e sem DOM. Unidades em metros e segundos.

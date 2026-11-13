@@ -3,7 +3,7 @@
  * Só toca no DOM dentro de `raiz`; `atualizar` escreve apenas quando o valor muda.
  */
 
-import { ARMAS, ITENS, familia } from './config.js';
+import { ARMAS, ITENS, familia } from '../../sim/src/config.js';
 import { MODELOS_ARMA } from './modelos.js';
 import { ESTILOS_MIRA, LIMITES_MIRA, MIRA_PADRAO, aberturaMira } from './mira.js';
 

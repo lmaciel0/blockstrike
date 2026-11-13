@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Física do Block Strike — colisão AABB, raycast e hitboxes.
  * Módulo puro: sem Three.js e sem DOM. y é para cima; `pos` fica nos pés.

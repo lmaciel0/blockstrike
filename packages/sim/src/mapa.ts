@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Block Strike — mapa em blocos (unidades: metros, y para cima).
  * Módulo puro: só dados. Base A em z>0 olhando para -z (yaw 0), base B em z<0

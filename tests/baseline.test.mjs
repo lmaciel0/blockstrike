@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mod } from './_repo.mjs';
 
 const { resumoPartida } = await mod('tools/baseline.mjs');
-const carregar = (nome) => mod(`js/games/blockstrike/${nome}.js`);
+const carregar = (nome) => mod(`packages/sim/src/${nome}.js`);
 
 test('resumoPartida: dt fixo é determinístico e bem formado', async () => {
   const a = await resumoPartida(carregar, 'medio', 3, { modo: 'fixo', dt: 1 / 60 });
@@ -25,4 +26,13 @@ test('resumoPartida: dt variável é determinístico pela seed', async () => {
   assert.deepEqual(a, b);
   assert.match(a.hash, /^[0-9a-f]{8}$/);
   assert.ok(a.rounds >= 13, `rounds=${a.rounds}`);
+});
+
+test('baseline:check imprime IDENTICO', { timeout: 900_000 }, () => {
+  const saida = execFileSync('npm', ['run', '--silent', 'baseline:check'], {
+    cwd: process.env.REPO ?? process.cwd(),
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  assert.match(saida, /IDENTICO/);
 });

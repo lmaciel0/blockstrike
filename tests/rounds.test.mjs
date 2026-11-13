@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mod } from './_repo.mjs';
 
-const { criarPartida, ladoAzul, vencedorPorTempo, tickPartida } = await mod('js/games/blockstrike/rounds.js');
-const { ROUND } = await mod('js/games/blockstrike/config.js');
+const { criarPartida, ladoAzul, vencedorPorTempo, tickPartida } = await mod('packages/sim/src/rounds.js');
+const { ROUND } = await mod('packages/sim/src/config.js');
 
 const V = (a, ha, l, hl) => ({ azul: { n: a, hp: ha }, laranja: { n: l, hp: hl } });
 const CHEIO = V(5, 500, 5, 500);

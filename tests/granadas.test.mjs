@@ -2,13 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mod } from './_repo.mjs';
 
-const { criarMundo, posicionarParaRound, passo } = await mod('js/games/blockstrike/mundo.js');
-const G = await mod('js/games/blockstrike/granadas.js');
-const E = await mod('js/games/blockstrike/economia.js');
-const { MAPA } = await mod('js/games/blockstrike/mapa.js');
-const { criarRng } = await mod('js/games/blockstrike/rng.js');
-const { GRANADA } = await mod('js/games/blockstrike/config.js');
-const { olho } = await mod('js/games/blockstrike/fisica.js');
+const { criarMundo, posicionarParaRound, passo } = await mod('packages/sim/src/mundo.js');
+const G = await mod('packages/sim/src/granadas.js');
+const E = await mod('packages/sim/src/economia.js');
+const { MAPA } = await mod('packages/sim/src/mapa.js');
+const { criarRng } = await mod('packages/sim/src/rng.js');
+const { GRANADA } = await mod('packages/sim/src/config.js');
+const { olho } = await mod('packages/sim/src/fisica.js');
 
 const chao = { min: { x: -60, y: -1, z: -60 }, max: { x: 60, y: 0, z: 60 }, cor: 0x888888 };
 const parede = { min: { x: -5, y: 0, z: -12.5 }, max: { x: 5, y: 4, z: -12 }, cor: 0x666666 };
@@ -226,8 +226,8 @@ test('bala que atravessa a fumaça abre buraco (atirarRaio)', () => {
 });
 
 test('bot cego não enxerga ninguém; sem a flash enxerga', async () => {
-  const { pensar, criarCerebro } = await mod('js/games/blockstrike/bots.js');
-  const { criarGrafo } = await mod('js/games/blockstrike/navegacao.js');
+  const { pensar, criarCerebro } = await mod('packages/sim/src/bots.js');
+  const { criarGrafo } = await mod('packages/sim/src/navegacao.js');
   const m = cenario();
   const bot = m.entidades[5];
   const alvo = m.entidades[0];
@@ -246,8 +246,8 @@ test('bot cego não enxerga ninguém; sem a flash enxerga', async () => {
 });
 
 test('bot não vê através da fumaça', async () => {
-  const { pensar, criarCerebro } = await mod('js/games/blockstrike/bots.js');
-  const { criarGrafo } = await mod('js/games/blockstrike/navegacao.js');
+  const { pensar, criarCerebro } = await mod('packages/sim/src/bots.js');
+  const { criarGrafo } = await mod('packages/sim/src/navegacao.js');
   const m = cenario();
   const bot = m.entidades[5];
   bot.pos = { x: 0, y: 0, z: 8 };
@@ -262,8 +262,8 @@ test('bot não vê através da fumaça', async () => {
 });
 
 test('bot com HE joga no inimigo à vista (alcance, cooldown) e a granada cai perto dele', async () => {
-  const { pensar, criarCerebro } = await mod('js/games/blockstrike/bots.js');
-  const { criarGrafo } = await mod('js/games/blockstrike/navegacao.js');
+  const { pensar, criarCerebro } = await mod('packages/sim/src/bots.js');
+  const { criarGrafo } = await mod('packages/sim/src/navegacao.js');
   const m = cenario();
   const bot = m.entidades[5];
   const alvo = m.entidades[0];
@@ -288,8 +288,8 @@ test('bot com HE joga no inimigo à vista (alcance, cooldown) e a granada cai pe
 });
 
 test('bot longe demais ou perto demais não joga HE', async () => {
-  const { pensar, criarCerebro } = await mod('js/games/blockstrike/bots.js');
-  const { criarGrafo } = await mod('js/games/blockstrike/navegacao.js');
+  const { pensar, criarCerebro } = await mod('packages/sim/src/bots.js');
+  const { criarGrafo } = await mod('packages/sim/src/navegacao.js');
   for (const dist of [4, 40]) {
     const m = cenario();
     const bot = m.entidades[5];
@@ -305,8 +305,8 @@ test('bot longe demais ou perto demais não joga HE', async () => {
 });
 
 test('bot cegado pela flash larga o combate e vai para a cobertura', async () => {
-  const { pensar, criarCerebro } = await mod('js/games/blockstrike/bots.js');
-  const { criarGrafo } = await mod('js/games/blockstrike/navegacao.js');
+  const { pensar, criarCerebro } = await mod('packages/sim/src/bots.js');
+  const { criarGrafo } = await mod('packages/sim/src/navegacao.js');
   const m = cenario([chao]);
   const bot = m.entidades[5];
   bot.pos = { x: -34, y: 0, z: 6 };
@@ -323,8 +323,8 @@ test('bot cegado pela flash larga o combate e vai para a cobertura', async () =>
 });
 
 test('smoke de fuga: bot em recuo joga smoke na direção da ameaça', async () => {
-  const { pensar, criarCerebro } = await mod('js/games/blockstrike/bots.js');
-  const { criarGrafo } = await mod('js/games/blockstrike/navegacao.js');
+  const { pensar, criarCerebro } = await mod('packages/sim/src/bots.js');
+  const { criarGrafo } = await mod('packages/sim/src/navegacao.js');
   const m = cenario([chao]);
   const bot = m.entidades[5];
   const alvo = m.entidades[0];

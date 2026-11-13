@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Block Strike — cérebro dos bots: rota, combate, cobertura, recuo e dificuldade.
  * Módulo puro: sem Three.js e sem DOM. Unidades em metros e segundos; ângulos em radianos.

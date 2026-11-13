@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { mod } from './_repo.mjs';
 
 const { moverComColisao, raycastCaixas, raycastEntidades, hitboxes, temVisada } =
-  await mod('js/games/blockstrike/fisica.js');
-const { criarRng } = await mod('js/games/blockstrike/rng.js');
+  await mod('packages/sim/src/fisica.js');
+const { criarRng } = await mod('packages/sim/src/rng.js');
 const { JOGADOR, ARMAS, ROUND, MULT_PARTE, DIFICULDADE, NOMES_BOTS } =
-  await mod('js/games/blockstrike/config.js');
+  await mod('packages/sim/src/config.js');
 
 const chao = { min: { x: -50, y: -1, z: -50 }, max: { x: 50, y: 0, z: 50 }, cor: 0x888888 };
 const parede = { min: { x: 2, y: 0, z: -5 }, max: { x: 2.2, y: 3, z: 5 }, cor: 0x444444 };

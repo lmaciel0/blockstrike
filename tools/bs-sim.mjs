@@ -7,7 +7,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => { const [k, v] 
 const N = Number(args.n ?? 6);
 const DT = Number(args.dt ?? 1 / 30);
 const difs = (args.dif ?? 'facil,medio,dificil').split(',');
-const m = (p) => import(pathToFileURL(path.join(repo, 'js/games/blockstrike', p)).href);
+const m = (p) => import(pathToFileURL(path.join(repo, 'packages/sim/src', p)).href);
 const { MAPA } = await m('mapa.js');
 const { criarMundo, posicionarParaRound, passo, vivosPorTime } = await m('mundo.js');
 const { criarCerebro, pensar } = await m('bots.js');

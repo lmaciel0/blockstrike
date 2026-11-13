@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mod } from './_repo.mjs';
 
-const { pensar, criarCerebro } = await mod('js/games/blockstrike/bots.js');
-const { criarMundo, posicionarParaRound, passo } = await mod('js/games/blockstrike/mundo.js');
-const { criarGrafo } = await mod('js/games/blockstrike/navegacao.js');
-const { MAPA } = await mod('js/games/blockstrike/mapa.js');
-const { criarRng } = await mod('js/games/blockstrike/rng.js');
+const { pensar, criarCerebro } = await mod('packages/sim/src/bots.js');
+const { criarMundo, posicionarParaRound, passo } = await mod('packages/sim/src/mundo.js');
+const { criarGrafo } = await mod('packages/sim/src/navegacao.js');
+const { MAPA } = await mod('packages/sim/src/mapa.js');
+const { criarRng } = await mod('packages/sim/src/rng.js');
 
 const DT = 1 / 20;
 const ROUNDS = 100;

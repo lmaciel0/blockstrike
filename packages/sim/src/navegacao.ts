@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Navegação do Block Strike — A* sobre o grafo de waypoints.
  * Módulo puro: sem Three.js e sem DOM. Unidades em metros; custo das arestas =

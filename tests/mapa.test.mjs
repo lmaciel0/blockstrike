@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mod } from './_repo.mjs';
 
-const { MAPA } = await mod('js/games/blockstrike/mapa.js');
-const { temVisada } = await mod('js/games/blockstrike/fisica.js');
-const { JOGADOR } = await mod('js/games/blockstrike/config.js');
+const { MAPA } = await mod('packages/sim/src/mapa.js');
+const { temVisada } = await mod('packages/sim/src/fisica.js');
+const { JOGADOR } = await mod('packages/sim/src/config.js');
 
 const { caixas, spawns, waypoints, arestas } = MAPA;
 const R = JOGADOR.raio;

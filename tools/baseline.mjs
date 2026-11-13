@@ -146,7 +146,7 @@ async function principal(argv) {
   const seeds = lerSeeds(arg('seeds', '1..5'));
   const modo = arg('dt', 'fixo');
   if (modo !== 'fixo' && modo !== 'variavel') throw new Error(`--dt inválido: ${modo}`);
-  const carregar = (nome) => mod(`js/games/blockstrike/${nome}.js`);
+  const carregar = (nome) => mod(`packages/sim/src/${nome}.js`);
   const partidas = [];
   for (const dificuldade of DIFICULDADES) {
     for (const seed of seeds) {

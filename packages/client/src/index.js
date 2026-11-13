@@ -5,25 +5,25 @@
  * `data-fase` na raiz reflete a fase: menu, freeze, jogo, fim-round ou fim-partida.
  */
 
-import { MAPA } from './mapa.js';
-import { criarMundo, posicionarParaRound, passo, vivosPorTime, relatorioDano, registrarMvp } from './mundo.js';
+import { MAPA } from '../../sim/src/mapa.js';
+import { criarMundo, posicionarParaRound, passo, vivosPorTime, relatorioDano, registrarMvp } from '../../sim/src/mundo.js';
 import { criarEntrada } from './entrada.js';
-import { criarRng } from './rng.js';
+import { criarRng } from '../../sim/src/rng.js';
 import { criarSons } from './sons.js';
-import { ARMAS, DIFICULDADE, ECONOMIA, FOV_PADRAO, familia } from './config.js';
-import { olho, direcao } from './fisica.js';
-import { visadaLivre, granadasDe } from './granadas.js';
-import { criarArma, calcularSpread, velocidadeDe } from './armas.js';
+import { ARMAS, DIFICULDADE, ECONOMIA, FOV_PADRAO, familia } from '../../sim/src/config.js';
+import { olho, direcao } from '../../sim/src/fisica.js';
+import { visadaLivre, granadasDe } from '../../sim/src/granadas.js';
+import { criarArma, calcularSpread, velocidadeDe } from '../../sim/src/armas.js';
 import { criarHud } from './hud.js';
 import { lerMira } from './mira.js';
 import { contarEventos, contarPartida, lerCarreira, novaCarreira, resumoCarreira } from './carreira.js';
-import { criarGrafo } from './navegacao.js';
-import { criarCerebro, pensar } from './bots.js';
-import { criarPartida, ladoAzul, tickPartida } from './rounds.js';
-import { criarBomba, acaoPossivel } from './bomba.js';
+import { criarGrafo } from '../../sim/src/navegacao.js';
+import { criarCerebro, pensar } from '../../sim/src/bots.js';
+import { criarPartida, ladoAzul, tickPartida } from '../../sim/src/rounds.js';
+import { criarBomba, acaoPossivel } from '../../sim/src/bomba.js';
 import {
   iniciarEconomia, resetarEconomia, premiarRound, botComprar, comprar, estadoCompra,
-} from './economia.js';
+} from '../../sim/src/economia.js';
 
 const DT_MAX = 0.05;
 const FOGO_AVISO = 0.5; // s entre hitmarkers/dor do mesmo par atacante→vítima no fogo

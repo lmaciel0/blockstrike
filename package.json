@@ -3,8 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "test": "tsx --test \"tests/*.test.mjs\""
+    "test": "tsx --test \"tests/*.test.mjs\" && vitest run --passWithNoTests",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "baseline:check": "node tools/baseline-check.mjs"
   },
   "devDependencies": {
     "puppeteer-core": "^25.17.0",

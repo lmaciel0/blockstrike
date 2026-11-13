@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Block Strike — regras de round e partida (MR12: vence quem chegar a 13).
  * Módulo puro: recebe os vivos de cada time e devolve os eventos da fase.

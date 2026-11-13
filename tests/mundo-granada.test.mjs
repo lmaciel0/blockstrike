@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mod } from './_repo.mjs';
 
-const { criarMundo, posicionarParaRound, passo } = await mod('js/games/blockstrike/mundo.js');
-const E = await mod('js/games/blockstrike/economia.js');
-const BOMBA_MOD = await mod('js/games/blockstrike/bomba.js');
-const { MAPA } = await mod('js/games/blockstrike/mapa.js');
-const { criarRng } = await mod('js/games/blockstrike/rng.js');
+const { criarMundo, posicionarParaRound, passo } = await mod('packages/sim/src/mundo.js');
+const E = await mod('packages/sim/src/economia.js');
+const BOMBA_MOD = await mod('packages/sim/src/bomba.js');
+const { MAPA } = await mod('packages/sim/src/mapa.js');
+const { criarRng } = await mod('packages/sim/src/rng.js');
 
 const chao = { min: { x: -60, y: -1, z: -60 }, max: { x: 60, y: 0, z: 60 }, cor: 0x888888 };
 const cmd = (extra = {}) => ({

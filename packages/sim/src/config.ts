@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Block Strike — constantes de jogo (unidades: metros e segundos).
  * Módulo puro: sem Three.js e sem DOM.

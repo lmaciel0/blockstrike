@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Block Strike — granadas: flash (cega), HE (dano em área), smoke (nuvem de blocos que corta a visão)
  * e molotov (poça de fogo que queima e fecha a passagem).

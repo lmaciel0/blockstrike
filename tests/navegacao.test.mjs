@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mod } from './_repo.mjs';
 
-const { MAPA } = await mod('js/games/blockstrike/mapa.js');
+const { MAPA } = await mod('packages/sim/src/mapa.js');
 const { criarGrafo, caminho, maisProximo, coberturaPerto } =
-  await mod('js/games/blockstrike/navegacao.js');
+  await mod('packages/sim/src/navegacao.js');
 
 // Quadrado 0-1-2-3 (lado 10), diagonal 0-2 (custo 14.1) e nó isolado 4.
 const wps = [

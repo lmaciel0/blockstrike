@@ -1,15 +1,15 @@
 // uso: REPO=<repo> node tools/bs-sim-partida.mjs [seed] [dificuldade] — partida completa só de bots (jogador também é bot),
 // com economia, C4 e granadas. Imprime desfechos dos rounds, uso de granadas e dinheiro.
 import { mod } from '../tests/_repo.mjs';
-const { criarMundo, posicionarParaRound, passo, vivosPorTime } = await mod('js/games/blockstrike/mundo.js');
-const { criarBomba } = await mod('js/games/blockstrike/bomba.js');
-const { pensar, criarCerebro } = await mod('js/games/blockstrike/bots.js');
-const { criarGrafo } = await mod('js/games/blockstrike/navegacao.js');
-const { criarPartida, tickPartida } = await mod('js/games/blockstrike/rounds.js');
-const E = await mod('js/games/blockstrike/economia.js');
-const { MAPA } = await mod('js/games/blockstrike/mapa.js');
-const { criarRng } = await mod('js/games/blockstrike/rng.js');
-const { ECONOMIA } = await mod('js/games/blockstrike/config.js');
+const { criarMundo, posicionarParaRound, passo, vivosPorTime } = await mod('packages/sim/src/mundo.js');
+const { criarBomba } = await mod('packages/sim/src/bomba.js');
+const { pensar, criarCerebro } = await mod('packages/sim/src/bots.js');
+const { criarGrafo } = await mod('packages/sim/src/navegacao.js');
+const { criarPartida, tickPartida } = await mod('packages/sim/src/rounds.js');
+const E = await mod('packages/sim/src/economia.js');
+const { MAPA } = await mod('packages/sim/src/mapa.js');
+const { criarRng } = await mod('packages/sim/src/rng.js');
+const { ECONOMIA } = await mod('packages/sim/src/config.js');
 const seed = Number(process.argv[2] ?? 1);
 const dificuldade = process.argv[3] ?? 'medio';
 const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade, rng: criarRng(seed) });

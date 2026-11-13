@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Block Strike — economia da partida: dinheiro, compras, colete e bônus de round.
  * Módulo puro: sem Three.js e sem DOM. Só vale quando `mundo.economia` está ligado (partida 5x5).

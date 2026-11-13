@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mod } from './_repo.mjs';
 
-const { criarSons, ganhoDistancia } = await mod('js/games/blockstrike/sons.js');
+const { criarSons, ganhoDistancia } = await mod('packages/client/src/sons.js');
 
 // AudioContext falso: registra nós criados, conexões e fontes iniciadas.
 function contextoFalso() {

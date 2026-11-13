@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mod } from './_repo.mjs';
 
-const { escolherPrimaria, criarCerebro, pensar, ouvir } = await mod('js/games/blockstrike/bots.js');
-const { criarMundo, posicionarParaRound, passo } = await mod('js/games/blockstrike/mundo.js');
-const { criarGrafo } = await mod('js/games/blockstrike/navegacao.js');
-const { olho } = await mod('js/games/blockstrike/fisica.js');
-const { MAPA } = await mod('js/games/blockstrike/mapa.js');
-const { criarRng } = await mod('js/games/blockstrike/rng.js');
+const { escolherPrimaria, criarCerebro, pensar, ouvir } = await mod('packages/sim/src/bots.js');
+const { criarMundo, posicionarParaRound, passo } = await mod('packages/sim/src/mundo.js');
+const { criarGrafo } = await mod('packages/sim/src/navegacao.js');
+const { olho } = await mod('packages/sim/src/fisica.js');
+const { MAPA } = await mod('packages/sim/src/mapa.js');
+const { criarRng } = await mod('packages/sim/src/rng.js');
 
 const DT = 0.05;
 const chao = { min: { x: -50, y: -1, z: -50 }, max: { x: 50, y: 0, z: 50 }, cor: 0x888888 };
@@ -299,12 +299,12 @@ test('desencalhe só conta quadros em que o bot tentava andar', () => {
 });
 
 test('tiro silenciado só é ouvido de perto; tiro normal chega longe', async () => {
-  const { passo } = await mod('js/games/blockstrike/mundo.js');
+  const { passo } = await mod('packages/sim/src/mundo.js');
   for (const [arma, perto, longe] of [['rifleS', true, false], ['rifle', true, true]]) {
     const mundo = criarMundo({ mapa: MAPA, primariaJogador: arma, dificuldade: 'medio', rng: criarRng(9) });
     posicionarParaRound(mundo, 'A');
     const eu = mundo.entidades[0];
-    eu.armas.primaria = (await mod('js/games/blockstrike/armas.js')).criarArma(arma);
+    eu.armas.primaria = (await mod('packages/sim/src/armas.js')).criarArma(arma);
     eu.slot = 'primaria';
     eu.pos = { x: 0, y: 0, z: 10 };
     passo(mundo, 0.016, new Map([[0, { frente: 0, lado: 0, yaw: 0, pitch: 0, atirar: true }]]));

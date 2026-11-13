@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Block Strike — estado e regras das armas (cadência, recarga, spread e recuo).
  * Módulo puro: sem Three.js e sem DOM. Tempo em segundos; ângulos em radianos.

@@ -1,12 +1,12 @@
 // uso: REPO=<repo> node tools/bs-sim-bomba.mjs [n] — simula rounds com C4 só com bots (jogador parado) e resume os desfechos.
 import { mod } from '../tests/_repo.mjs';
-const { criarMundo, posicionarParaRound, passo, vivosPorTime } = await mod('js/games/blockstrike/mundo.js');
-const { criarBomba } = await mod('js/games/blockstrike/bomba.js');
-const { pensar, criarCerebro } = await mod('js/games/blockstrike/bots.js');
-const { criarGrafo } = await mod('js/games/blockstrike/navegacao.js');
-const { criarPartida, tickPartida } = await mod('js/games/blockstrike/rounds.js');
-const { MAPA } = await mod('js/games/blockstrike/mapa.js');
-const { criarRng } = await mod('js/games/blockstrike/rng.js');
+const { criarMundo, posicionarParaRound, passo, vivosPorTime } = await mod('packages/sim/src/mundo.js');
+const { criarBomba } = await mod('packages/sim/src/bomba.js');
+const { pensar, criarCerebro } = await mod('packages/sim/src/bots.js');
+const { criarGrafo } = await mod('packages/sim/src/navegacao.js');
+const { criarPartida, tickPartida } = await mod('packages/sim/src/rounds.js');
+const { MAPA } = await mod('packages/sim/src/mapa.js');
+const { criarRng } = await mod('packages/sim/src/rng.js');
 const N = Number(process.argv[2] ?? 12);
 const dificuldade = process.argv[3] ?? 'medio';
 const res = { 'bomba-explodiu': 0, 'bomba-desarmada': 0, 'eliminacao-T': 0, 'eliminacao-CT': 0, tempo: 0, outro: 0 };

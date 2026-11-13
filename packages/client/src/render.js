@@ -4,10 +4,10 @@
  */
 
 import * as THREE from '../../vendor/three.module.min.js';
-import { olho } from './fisica.js';
-import { ARMAS, FOV_PADRAO } from './config.js';
-import { SAQUE } from './armas.js';
-import { criarRng } from './rng.js';
+import { olho } from '../../sim/src/fisica.js';
+import { ARMAS, FOV_PADRAO } from '../../sim/src/config.js';
+import { SAQUE } from '../../sim/src/armas.js';
+import { criarRng } from '../../sim/src/rng.js';
 import { MODELOS_ARMA } from './modelos.js';
 
 const PITCH_CAM = Math.PI / 2 - 0.01; // pitch + recuo nunca passa da vertical

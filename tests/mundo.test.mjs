@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { mod } from './_repo.mjs';
 
 const { criarMundo, posicionarParaRound, passo, vivosPorTime } =
-  await mod('js/games/blockstrike/mundo.js');
-const { olho, direcao } = await mod('js/games/blockstrike/fisica.js');
-const { MAPA } = await mod('js/games/blockstrike/mapa.js');
-const { criarArma } = await mod('js/games/blockstrike/armas.js');
-const { criarRng } = await mod('js/games/blockstrike/rng.js');
-const { JOGADOR, NOMES_BOTS } = await mod('js/games/blockstrike/config.js');
+  await mod('packages/sim/src/mundo.js');
+const { olho, direcao } = await mod('packages/sim/src/fisica.js');
+const { MAPA } = await mod('packages/sim/src/mapa.js');
+const { criarArma } = await mod('packages/sim/src/armas.js');
+const { criarRng } = await mod('packages/sim/src/rng.js');
+const { JOGADOR, NOMES_BOTS } = await mod('packages/sim/src/config.js');
 
 const chao = { min: { x: -50, y: -1, z: -50 }, max: { x: 50, y: 0, z: 50 }, cor: 0x888888 };
 const cmd = (extra = {}) => ({

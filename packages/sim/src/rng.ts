@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * RNG determinístico (mulberry32) — mesma seed, mesma sequência.
  */

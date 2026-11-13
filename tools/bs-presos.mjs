@@ -4,15 +4,15 @@
 // Também lista os vaivéns que o critério acima não pega (o bot anda, mas não sai do lugar):
 // recuo repetido no mesmo round e troca de objetivo da C4 (chaveBomba) em loop.
 import { mod } from '../tests/_repo.mjs';
-const { criarMundo, posicionarParaRound, passo, vivosPorTime } = await mod('js/games/blockstrike/mundo.js');
-const { criarBomba } = await mod('js/games/blockstrike/bomba.js');
-const { pensar, criarCerebro } = await mod('js/games/blockstrike/bots.js');
-const { criarGrafo } = await mod('js/games/blockstrike/navegacao.js');
-const { criarPartida, tickPartida } = await mod('js/games/blockstrike/rounds.js');
-const E = await mod('js/games/blockstrike/economia.js');
-const { MAPA } = await mod('js/games/blockstrike/mapa.js');
-const { criarRng } = await mod('js/games/blockstrike/rng.js');
-const { ECONOMIA } = await mod('js/games/blockstrike/config.js');
+const { criarMundo, posicionarParaRound, passo, vivosPorTime } = await mod('packages/sim/src/mundo.js');
+const { criarBomba } = await mod('packages/sim/src/bomba.js');
+const { pensar, criarCerebro } = await mod('packages/sim/src/bots.js');
+const { criarGrafo } = await mod('packages/sim/src/navegacao.js');
+const { criarPartida, tickPartida } = await mod('packages/sim/src/rounds.js');
+const E = await mod('packages/sim/src/economia.js');
+const { MAPA } = await mod('packages/sim/src/mapa.js');
+const { criarRng } = await mod('packages/sim/src/rng.js');
+const { ECONOMIA } = await mod('packages/sim/src/config.js');
 
 const ESTADOS_ANDANDO = ['rota', 'cobertura', 'recuo', 'procura'];
 const PRESO_MIN = 3;
