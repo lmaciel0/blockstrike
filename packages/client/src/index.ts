@@ -12,7 +12,7 @@ import {
   criarBomba, acaoPossivel, iniciarEconomia, resetarEconomia, premiarRound, botComprar, comprar,
   estadoCompra,
 } from '@blockstrike/sim';
-import { criarEntrada } from './entrada';
+import { criarEntradaTecladoMouse } from './entrada';
 import { criarSons } from './sons';
 import { criarHud } from './hud';
 import { lerMira } from './mira';
@@ -22,7 +22,7 @@ import type {
 } from '@blockstrike/sim';
 import type { Portas, StoragePort } from './portas';
 import type { ConfigJogo, EstadoBombaHud, ModoJogo, TamanhoPalco, VistaHud } from './hud';
-import type { Entrada } from './entrada';
+import type { EntradaTecladoMouse } from './entrada';
 
 const DT_MAX = 0.05;
 const FOGO_AVISO = 0.5; // s entre hitmarkers/dor do mesmo par atacante→vítima no fogo
@@ -152,7 +152,7 @@ interface ElementoWebkit extends HTMLElement { webkitRequestFullscreen?: HTMLEle
 interface PartidaAtiva {
   mundo: Mundo;
   render: Render;
-  entrada: Entrada;
+  entrada: EntradaTecladoMouse;
   grafo: Grafo;
   rngBots: Rng;
   partida: Partida;
@@ -768,7 +768,7 @@ function montar(raiz: HTMLElement, portas: Portas): InstanciaJogo {
     if (!partida) return;
     if (partida.raf !== null) cancelAnimationFrame(partida.raf);
     partida.desligarTrava();
-    partida.entrada.destruir();
+    partida.entrada.desligar();
     partida.render.destruir();
     partida = null;
   }
@@ -802,7 +802,8 @@ function montar(raiz: HTMLElement, portas: Portas): InstanciaJogo {
     destruirPartida();
     desligarFundo();
     const minha = ++geracao;
-    const entrada = criarEntrada(canvas, { sensibilidade: cfg.sensibilidade });
+    const entrada = criarEntradaTecladoMouse(canvas, { sensibilidade: cfg.sensibilidade });
+    entrada.ligar();
     // Os ouvintes de trava entram antes do travar(): uma trava que cai depois de ter funcionado abre a pausa.
     const lock = { travou: false };
     const aoTravar = () => { if (document.pointerLockElement === canvas) lock.travou = true; };
@@ -833,7 +834,7 @@ function montar(raiz: HTMLElement, portas: Portas): InstanciaJogo {
       const { criarRender } = await import('./render');
       if (minha !== geracao) { // saiu para o menu ou destruiu enquanto carregava
         document.removeEventListener('pointerlockchange', aoTravar);
-        entrada.destruir();
+        entrada.desligar();
         if (document.pointerLockElement === canvas) document.exitPointerLock();
         return;
       }
@@ -879,7 +880,7 @@ function montar(raiz: HTMLElement, portas: Portas): InstanciaJogo {
       }
     } catch (erro) {
       document.removeEventListener('pointerlockchange', aoTravar);
-      entrada.destruir();
+      entrada.desligar();
       hud.esconderMenu();
       hud.mostrarHud(false);
       bloquear('Não foi possível iniciar o jogo');

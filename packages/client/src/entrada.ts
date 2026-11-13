@@ -5,9 +5,24 @@
 
 import type { Comandos, SlotPedido } from '@blockstrike/sim';
 
-/** Entrada do jogador: o que o loop e o HUD usam do teclado/mouse. */
-export interface Entrada {
+/**
+ * Fonte de entrada do jogador: o que o loop precisa para montar o comando do tick.
+ * Teclado/mouse, toque e gamepad implementam a mesma interface; a simulação não muda.
+ */
+export interface FonteEntrada {
+  /** Devolve yaw e pitch ABSOLUTOS (a atual mais o giro acumulado), não deltas. */
   comando(yawAtual: number, pitchAtual: number): Comandos;
+  /** Começa a ouvir os eventos do dispositivo. Idempotente. */
+  ligar(): void;
+  /** Para de ouvir e limpa o estado. Idempotente. */
+  desligar(): void;
+}
+
+/**
+ * Entrada do jogador: o que o loop e o HUD usam do teclado/mouse.
+ * Extras do desktop (pointer lock, Tab, sensibilidade) além da interface comum.
+ */
+export interface EntradaTecladoMouse extends FonteEntrada {
   travar(): void;
   soltarCursor(): void;
   liberarClique(): void;
@@ -20,7 +35,11 @@ export interface Entrada {
   ativar(valor: boolean): void;
   definirSensibilidade(n: number): void;
   definirFatorMira(f: number): void;
-  destruir(): void;
+}
+
+/** Opções da entrada de teclado/mouse. */
+export interface OpcoesEntrada {
+  sensibilidade?: number;
 }
 
 const SENS_MIN = 0.2;
@@ -31,7 +50,7 @@ const SLOTS: Readonly<Record<string, SlotPedido>> = {
 };
 const BLOQUEADAS = new Set(['Tab', 'Space']);
 
-export function criarEntrada(canvas: HTMLCanvasElement, { sensibilidade = 1 }: { sensibilidade?: number } = {}): Entrada {
+export function criarEntradaTecladoMouse(canvas: HTMLElement, { sensibilidade = 1 }: OpcoesEntrada = {}): EntradaTecladoMouse {
   const doc = canvas.ownerDocument;
   const teclas = new Set<string>();
   const botoes = new Set<number>();
@@ -43,6 +62,7 @@ export function criarEntrada(canvas: HTMLCanvasElement, { sensibilidade = 1 }: {
   let recarregarPendente = false;
   let ativa = true; // pausado/em outra tela: não captura teclas do resto do hub
   let cursorLivre = false; // soltou o mouse de propósito (B na compra): perder a trava não pausa nem retrava
+  let ligada = false; // ligar()/desligar() são idempotentes
   let aoPerder = () => {};
   let aoTabFn: (aberto: boolean) => void = () => {};
   let aoTeclaFn: (codigo: string) => boolean | void = () => {};
@@ -127,16 +147,36 @@ export function criarEntrada(canvas: HTMLCanvasElement, { sensibilidade = 1 }: {
   const onContext = (e: Event) => e.preventDefault();
   const onBlur = limpar;
 
-  doc.addEventListener('keydown', onKeyDown);
-  doc.addEventListener('keyup', onKeyUp);
-  doc.addEventListener('mousemove', onMouseMove);
-  doc.addEventListener('mousedown', onMouseDown);
-  doc.addEventListener('mouseup', onMouseUp);
-  doc.addEventListener('pointerlockchange', onLockChange);
-  doc.addEventListener('pointerlockerror', onLockError);
-  canvas.addEventListener('contextmenu', onContext);
-  canvas.addEventListener('wheel', onWheel, { passive: false });
-  canvas.ownerDocument.defaultView?.addEventListener('blur', onBlur);
+  function ligar() {
+    if (ligada) return;
+    ligada = true;
+    doc.addEventListener('keydown', onKeyDown);
+    doc.addEventListener('keyup', onKeyUp);
+    doc.addEventListener('mousemove', onMouseMove);
+    doc.addEventListener('mousedown', onMouseDown);
+    doc.addEventListener('mouseup', onMouseUp);
+    doc.addEventListener('pointerlockchange', onLockChange);
+    doc.addEventListener('pointerlockerror', onLockError);
+    canvas.addEventListener('contextmenu', onContext);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    canvas.ownerDocument.defaultView?.addEventListener('blur', onBlur);
+  }
+
+  function desligar() {
+    if (!ligada) return;
+    ligada = false;
+    doc.removeEventListener('keydown', onKeyDown);
+    doc.removeEventListener('keyup', onKeyUp);
+    doc.removeEventListener('mousemove', onMouseMove);
+    doc.removeEventListener('mousedown', onMouseDown);
+    doc.removeEventListener('mouseup', onMouseUp);
+    doc.removeEventListener('pointerlockchange', onLockChange);
+    doc.removeEventListener('pointerlockerror', onLockError);
+    canvas.removeEventListener('contextmenu', onContext);
+    canvas.removeEventListener('wheel', onWheel);
+    canvas.ownerDocument.defaultView?.removeEventListener('blur', onBlur);
+    limpar();
+  }
 
   const eixo = (mais: string, menos: string): number => (teclas.has(mais) ? 1 : 0) - (teclas.has(menos) ? 1 : 0);
 
@@ -165,6 +205,8 @@ export function criarEntrada(canvas: HTMLCanvasElement, { sensibilidade = 1 }: {
       slotPendente = null;
       return cmd;
     },
+    ligar,
+    desligar,
     travar,
     soltarCursor,
     // Fim do cursor solto sem prender: o próximo clique no canvas retrava e não vira tiro.
@@ -181,18 +223,5 @@ export function criarEntrada(canvas: HTMLCanvasElement, { sensibilidade = 1 }: {
     },
     definirSensibilidade(n) { sens = Math.max(SENS_MIN, Math.min(SENS_MAX, n)); },
     definirFatorMira(f) { fatorMira = f; },
-    destruir() {
-      doc.removeEventListener('keydown', onKeyDown);
-      doc.removeEventListener('keyup', onKeyUp);
-      doc.removeEventListener('mousemove', onMouseMove);
-      doc.removeEventListener('mousedown', onMouseDown);
-      doc.removeEventListener('mouseup', onMouseUp);
-      doc.removeEventListener('pointerlockchange', onLockChange);
-      doc.removeEventListener('pointerlockerror', onLockError);
-      canvas.removeEventListener('contextmenu', onContext);
-      canvas.removeEventListener('wheel', onWheel);
-      canvas.ownerDocument.defaultView?.removeEventListener('blur', onBlur);
-      limpar();
-    },
   };
 }
