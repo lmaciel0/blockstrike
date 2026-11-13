@@ -1,32 +1,36 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import { mod } from './_repo.mjs';
+import { expect, test } from 'vitest';
+import { criarMundo, posicionarParaRound, passo } from '../src/mundo.js';
+import { criarBomba } from '../src/bomba.js';
+import { pensar, criarCerebro } from '../src/bots.js';
+import { criarGrafo } from '../src/navegacao.js';
+import { MAPA } from '../src/mapa.js';
+import { criarRng } from '../src/rng.js';
+import type { Bomba, Cerebro, Comandos, Entidade, Evento, Grafo, Mundo, Rng, Time } from '../src/tipos.js';
 
-const { criarMundo, posicionarParaRound, passo } = await mod('packages/sim/src/mundo.js');
-const { criarBomba } = await mod('packages/sim/src/bomba.js');
-const { pensar, criarCerebro } = await mod('packages/sim/src/bots.js');
-const { criarGrafo } = await mod('packages/sim/src/navegacao.js');
-const { MAPA } = await mod('packages/sim/src/mapa.js');
-const { criarRng } = await mod('packages/sim/src/rng.js');
+interface Cena { mundo: Mundo & { bomba: Bomba }; grafo: Grafo; rng: Rng }
 
-function cenario(seed = 3) {
-  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(seed) });
+// `criarMundo` ainda é JS sem tipos (mundo.ts tem @ts-nocheck): o cast abaixo cai quando ele for tipado.
+function cenario(seed = 3): Cena {
+  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(seed) }) as Mundo;
   mundo.entidades[0].bot = true; // o "jogador" também é um bot na simulação
   posicionarParaRound(mundo, 'A');
   const grafo = criarGrafo(MAPA.waypoints, MAPA.arestas);
   const rng = criarRng(seed * 31);
   mundo.bomba = criarBomba(mundo, 'laranja');
   for (const e of mundo.entidades) e.cerebro = criarCerebro(e, grafo, rng, MAPA.caixas, mundo);
-  return { mundo, grafo, rng };
+  return { mundo: mundo as Cena['mundo'], grafo, rng };
 }
-const matar = (mundo, time) => {
+const matar = (mundo: Mundo, time: Time): void => {
   for (const e of mundo.entidades) if (e.time === time) { e.vivo = false; e.hp = 0; }
 };
 // `fora`: ids vivos que não pensam (ficam parados onde o teste os pôs).
-function rodar({ mundo, grafo, rng }, seg, { parar = () => false, fora = [] } = {}) {
-  const eventos = [];
+function rodar(
+  { mundo, grafo, rng }: Cena, seg: number,
+  { parar = () => false, fora = [] }: { parar?: () => boolean; fora?: number[] } = {},
+): Evento[] {
+  const eventos: Evento[] = [];
   for (let i = 0; i < seg / 0.05 && !parar(); i++) {
-    const cmds = new Map();
+    const cmds = new Map<number, Comandos>();
     for (const e of mundo.entidades) {
       if (e.vivo && !fora.includes(e.id)) cmds.set(e.id, pensar(e, mundo, grafo, 'medio', 0.05, rng));
     }
@@ -36,8 +40,8 @@ function rodar({ mundo, grafo, rng }, seg, { parar = () => false, fora = [] } = 
 }
 
 const SEEDS = [3, 4, 5, 6];
-const ts = (mundo) => mundo.entidades.filter((e) => e.vivo && e.time === 'laranja');
-function mediaPares(lista) {
+const ts = (mundo: Mundo): Entidade[] => mundo.entidades.filter((e) => e.vivo && e.time === 'laranja');
+function mediaPares(lista: Entidade[]): number {
   let soma = 0;
   let n = 0;
   for (let i = 0; i < lista.length; i++) {
@@ -48,7 +52,7 @@ function mediaPares(lista) {
   }
   return n ? soma / n : 0;
 }
-function menorPar(lista) {
+function menorPar(lista: Entidade[]): number {
   let m = Infinity;
   for (let i = 0; i < lista.length; i++) {
     for (let j = i + 1; j < lista.length; j++) {
@@ -62,8 +66,8 @@ test('os Ts saem por duas rotas até o bombsite (a do site e o meio)', () => {
   for (const seed of SEEDS) {
     const c = cenario(seed);
     const { rotas } = MAPA.bombsites[c.mundo.bomba.siteAlvo];
-    const porRota = rotas.map((id) => ts(c.mundo).filter((e) => e.cerebro.rota.includes(id)).length);
-    assert.ok(porRota[0] >= 2 && porRota[1] >= 2, `seed ${seed}: Ts por rota ${porRota}`);
+    const porRota = rotas.map((id) => ts(c.mundo).filter((e) => (e.cerebro as Cerebro).rota.includes(id)).length);
+    expect(porRota[0] >= 2 && porRota[1] >= 2, `seed ${seed}: Ts por rota ${porRota}`).toBeTruthy();
   }
 });
 
@@ -73,7 +77,7 @@ test('no meio do caminho os Ts não andam em fila (distância média entre eles)
     matar(c.mundo, 'azul');
     rodar(c, 9);
     const d = mediaPares(ts(c.mundo));
-    assert.ok(d >= 12, `seed ${seed}: distância média ${d.toFixed(1)} m`);
+    expect(d >= 12, `seed ${seed}: distância média ${d.toFixed(1)} m`).toBeTruthy();
   }
 });
 
@@ -84,7 +88,7 @@ test('no bombsite os Ts se espalham em vez de ficar todos no mesmo ponto', () =>
     rodar(c, 70, { parar: () => c.mundo.bomba.plantada });
     rodar(c, 12);
     const lista = ts(c.mundo);
-    assert.ok(menorPar(lista) >= 1.5, `seed ${seed}: menor distância ${menorPar(lista).toFixed(2)} m`);
-    assert.ok(mediaPares(lista) >= 3, `seed ${seed}: distância média ${mediaPares(lista).toFixed(1)} m`);
+    expect(menorPar(lista) >= 1.5, `seed ${seed}: menor distância ${menorPar(lista).toFixed(2)} m`).toBeTruthy();
+    expect(mediaPares(lista) >= 3, `seed ${seed}: distância média ${mediaPares(lista).toFixed(1)} m`).toBeTruthy();
   }
 });

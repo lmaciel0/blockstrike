@@ -1,23 +1,23 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import { mod } from './_repo.mjs';
+import { expect, test } from 'vitest';
+import { criarMundo, posicionarParaRound, passo } from '../src/mundo.js';
+import { pensar, ouvir } from '../src/bots.js';
+import { criarGrafo } from '../src/navegacao.js';
+import { MAPA } from '../src/mapa.js';
+import { criarRng } from '../src/rng.js';
+import type { Caixa, Comandos, Mundo } from '../src/tipos.js';
 
-const { criarMundo, posicionarParaRound, passo } = await mod('packages/sim/src/mundo.js');
-const { pensar, ouvir } = await mod('packages/sim/src/bots.js');
-const { criarGrafo } = await mod('packages/sim/src/navegacao.js');
-const { MAPA } = await mod('packages/sim/src/mapa.js');
-const { criarRng } = await mod('packages/sim/src/rng.js');
-
-const chao = { min: { x: -50, y: -1, z: -50 }, max: { x: 50, y: 0, z: 50 }, cor: 0x888888 };
-const cmd = (extra = {}) => ({
+const chao: Caixa = { min: { x: -50, y: -1, z: -50 }, max: { x: 50, y: 0, z: 50 }, cor: 0x888888 };
+// Sem `usar` e `granada`, como no teste original: `passo` ainda é JS sem tipos (aceita qualquer comando).
+const cmd = (extra: Partial<Comandos> = {}): Partial<Comandos> => ({
   frente: 0, lado: 0, pular: false, agachar: false, devagar: false, atirar: false,
   zoom: false, recarregar: false, slot: null, yaw: 0, pitch: 0, ...extra,
 });
 
-function cenario() {
+// `criarMundo` ainda é JS sem tipos (mundo.ts tem @ts-nocheck): o cast abaixo cai quando ele for tipado.
+function cenario(): Mundo {
   const mundo = criarMundo({
     mapa: { ...MAPA, caixas: [chao] }, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(1),
-  });
+  }) as Mundo;
   posicionarParaRound(mundo, 'A');
   for (const e of mundo.entidades) e.pos = { x: 40, y: 0, z: 40 + e.id * 0.01 }; // todos longe
   return mundo;
@@ -28,27 +28,27 @@ test('correr emite ruído; Shift e agachado não', () => {
   const eu = m.entidades[0];
   eu.pos = { x: 0, y: 0, z: 0 };
   for (let i = 0; i < 40; i++) passo(m, 0.05, new Map([[0, cmd({ frente: 1, yaw: Math.PI })]]));
-  assert.ok(m.ruidos.length > 0, 'correndo faz barulho');
-  assert.ok(m.ruidos.every((r) => r.time === 'azul' && r.id === 0));
+  expect(m.ruidos.length > 0, 'correndo faz barulho').toBeTruthy();
+  expect(m.ruidos.every((r) => r.time === 'azul' && r.id === 0)).toBeTruthy();
 
   const m2 = cenario();
   m2.entidades[0].pos = { x: 0, y: 0, z: 0 };
   for (let i = 0; i < 40; i++) passo(m2, 0.05, new Map([[0, cmd({ frente: 1, devagar: true })]]));
-  assert.equal(m2.ruidos.length, 0, 'Shift é silencioso');
+  expect(m2.ruidos.length, 'Shift é silencioso').toBe(0);
 
   const m3 = cenario();
   m3.entidades[0].pos = { x: 0, y: 0, z: 0 };
   for (let i = 0; i < 40; i++) passo(m3, 0.05, new Map([[0, cmd({ frente: 1, agachar: true })]]));
-  assert.equal(m3.ruidos.length, 0, 'agachado é silencioso');
+  expect(m3.ruidos.length, 'agachado é silencioso').toBe(0);
 });
 
 test('ruídos velhos somem', () => {
   const m = cenario();
   m.entidades[0].pos = { x: 0, y: 0, z: 0 };
   for (let i = 0; i < 20; i++) passo(m, 0.05, new Map([[0, cmd({ frente: 1 })]]));
-  assert.ok(m.ruidos.length > 0);
+  expect(m.ruidos.length > 0).toBeTruthy();
   for (let i = 0; i < 80; i++) passo(m, 0.05, new Map());
-  assert.equal(m.ruidos.length, 0);
+  expect(m.ruidos.length).toBe(0);
 });
 
 test('bot laranja vira a mira para passos de azul a menos de 15 m', () => {
@@ -59,9 +59,9 @@ test('bot laranja vira a mira para passos de azul a menos de 15 m', () => {
   m.ruidos.push({ id: 0, time: 'azul', x: 10, z: 0, em: m.tempo }); // à direita (+x), yaw negativo
   const grafo = criarGrafo(MAPA.waypoints, MAPA.arestas);
   const rng = criarRng(7);
-  let c = pensar(bot, m, grafo, 'medio', 0.05, rng);
-  assert.ok(c.yaw < 0, `deveria virar para +x (yaw<0), veio ${c.yaw}`);
-  assert.ok(bot.cerebro.ouvidoPos, 'guardou de onde veio o som');
+  const c = pensar(bot, m, grafo, 'medio', 0.05, rng);
+  expect(c.yaw < 0, `deveria virar para +x (yaw<0), veio ${c.yaw}`).toBeTruthy();
+  expect(bot.cerebro!.ouvidoPos, 'guardou de onde veio o som').toBeTruthy();
 });
 
 test('bot ignora passos longe, de aliado e já tratados', () => {
@@ -70,13 +70,13 @@ test('bot ignora passos longe, de aliado e já tratados', () => {
   bot.pos = { x: 0, y: 0, z: 0 };
   const grafo = criarGrafo(MAPA.waypoints, MAPA.arestas);
   pensar(bot, m, grafo, 'medio', 0.05, criarRng(3));
-  const c = bot.cerebro;
+  const c = bot.cerebro!;
   m.ruidos.push({ id: 0, time: 'azul', x: 30, z: 0, em: 1 });
-  assert.equal(ouvir(bot, m, c), null, 'longe demais');
+  expect(ouvir(bot, m, c), 'longe demais').toBe(null);
   m.ruidos.push({ id: 6, time: 'laranja', x: 3, z: 0, em: 1 });
-  assert.equal(ouvir(bot, m, c), null, 'aliado');
+  expect(ouvir(bot, m, c), 'aliado').toBe(null);
   m.ruidos.push({ id: 0, time: 'azul', x: 3, z: 0, em: 1 });
-  assert.ok(ouvir(bot, m, c));
+  expect(ouvir(bot, m, c)).toBeTruthy();
   c.ouvidoEm = 1;
-  assert.equal(ouvir(bot, m, c), null, 'já tratado');
+  expect(ouvir(bot, m, c), 'já tratado').toBe(null);
 });

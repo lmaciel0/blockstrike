@@ -1,27 +1,35 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import { mod } from './_repo.mjs';
-
-const { criarMundo, posicionarParaRound, passo, vivosPorTime } = await mod('packages/sim/src/mundo.js');
-const { criarBomba } = await mod('packages/sim/src/bomba.js');
-const { pensar, criarCerebro } = await mod('packages/sim/src/bots.js');
-const { criarGrafo } = await mod('packages/sim/src/navegacao.js');
-const { criarPartida, tickPartida } = await mod('packages/sim/src/rounds.js');
-const E = await mod('packages/sim/src/economia.js');
-const { MAPA } = await mod('packages/sim/src/mapa.js');
-const { criarRng } = await mod('packages/sim/src/rng.js');
-const { ECONOMIA } = await mod('packages/sim/src/config.js');
+import { expect, test } from 'vitest';
+import { criarMundo, posicionarParaRound, passo, vivosPorTime } from '../src/mundo.js';
+import { criarBomba } from '../src/bomba.js';
+import { pensar, criarCerebro } from '../src/bots.js';
+import { criarGrafo } from '../src/navegacao.js';
+import { criarPartida, tickPartida } from '../src/rounds.js';
+import * as E from '../src/economia.js';
+import { MAPA } from '../src/mapa.js';
+import { criarRng } from '../src/rng.js';
+import { ECONOMIA } from '../src/config.js';
+import type { Cerebro, Comandos, EstadoCerebro, Mundo } from '../src/tipos.js';
 
 const DT = 0.05;
-const ESTADOS_ANDANDO = ['rota', 'cobertura', 'recuo', 'procura'];
+const ESTADOS_ANDANDO: EstadoCerebro[] = ['rota', 'cobertura', 'recuo', 'procura'];
 const PRESO_MIN = 3;
 const grafo = criarGrafo(MAPA.waypoints, MAPA.arestas);
 
+// Uma linha do registro: um bot vivo num passo.
+interface Registro {
+  round: number; t: number; dt: number; id: number; estado: EstadoCerebro;
+  pos: { x: number; z: number }; velHoriz: number; queriaAndar: boolean; wp: number | null;
+}
+interface Aberto {
+  round: number; id: number; estado: EstadoCerebro; pos: { x: number; z: number }; alvoWp: number | null;
+  dur: number; ultimo: number;
+}
+
 // Intervalos contínuos (por round e bot) com estado andando, queriaAndar e velHoriz < 0.5, de mais de 3 s.
-function episodiosPresos(log) {
-  const abertos = new Map();
-  const saida = [];
-  const fechar = (k) => {
+function episodiosPresos(log: Registro[]): Omit<Aberto, 'ultimo'>[] {
+  const abertos = new Map<string, Aberto>();
+  const saida: Aberto[] = [];
+  const fechar = (k: string): void => {
     const a = abertos.get(k);
     abertos.delete(k);
     if (a && a.dur > PRESO_MIN) saida.push({ ...a, dur: +a.dur.toFixed(2) });
@@ -44,29 +52,30 @@ function episodiosPresos(log) {
 }
 
 // Partida só de bots (laço de bs-sim-partida.mjs) pelos primeiros `rounds` rounds; registro por passo e bot vivo.
-function simular(seed, rounds) {
-  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(seed) });
+// `criarMundo` ainda é JS sem tipos (mundo.ts tem @ts-nocheck): o cast abaixo cai quando ele for tipado.
+function simular(seed: number, rounds: number): Registro[] {
+  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(seed) }) as Mundo;
   mundo.entidades[0].bot = true;
   E.iniciarEconomia(mundo);
   const rng = criarRng(seed * 77);
   const p = criarPartida({ freeze: ECONOMIA.freezeCompra });
-  const novoRound = () => {
+  const novoRound = (): void => {
     for (const e of mundo.entidades) E.botComprar(e, e.time === p.terroristas ? 'T' : 'CT');
     posicionarParaRound(mundo, p.round <= 12 ? 'A' : 'B');
     mundo.bomba = criarBomba(mundo, p.terroristas);
     for (const e of mundo.entidades) e.cerebro = criarCerebro(e, grafo, rng, MAPA.caixas, mundo);
   };
   novoRound();
-  const log = [];
+  const log: Registro[] = [];
   while (p.fase !== 'fim-partida' && p.round <= rounds) {
-    const cmds = new Map();
+    const cmds = new Map<number, Comandos>();
     const jogando = p.fase !== 'freeze';
     if (jogando) for (const e of mundo.entidades) if (e.vivo) cmds.set(e.id, pensar(e, mundo, grafo, 'medio', DT, rng));
     passo(mundo, DT, cmds, { congelado: !jogando, comBomba: p.fase === 'jogo' });
     if (jogando) {
       for (const e of mundo.entidades) {
         if (!e.vivo) continue;
-        const c = e.cerebro;
+        const c = e.cerebro as Cerebro;
         log.push({
           round: p.round, t: +mundo.tempo.toFixed(4), dt: DT, id: e.id, estado: c.estado,
           pos: { x: +e.pos.x.toFixed(2), z: +e.pos.z.toFixed(2) }, velHoriz: e.velHoriz,
@@ -87,16 +96,16 @@ const logs = [1, 2, 3].map((seed) => ({ seed, log: simular(seed, 4) }));
 
 test('nenhum bot fica preso andando', () => {
   const eps = logs.flatMap(({ seed, log }) => episodiosPresos(log).map((e) => ({ seed, ...e })));
-  assert.deepEqual(eps, [], `episódios:\n${eps.map((e) => JSON.stringify(e)).join('\n')}`);
+  expect(eps, `episódios:\n${eps.map((e) => JSON.stringify(e)).join('\n')}`).toStrictEqual([]);
 });
 
 // Antes, o bot ferido recuava toda vez que via o inimigo: ia à cobertura, esperava, voltava e recuava de novo
 // (até 22 vezes no mesmo round), num vaivém que parecia bot andando contra a parede.
 test('bot ferido recua uma vez só por round', () => {
-  const vaivem = [];
+  const vaivem: string[] = [];
   for (const { seed, log } of logs) {
-    const anterior = new Map();
-    const recuos = new Map();
+    const anterior = new Map<string, EstadoCerebro>();
+    const recuos = new Map<string, number>();
     for (const r of log) {
       const k = `${r.round}:${r.id}`;
       if (r.estado === 'recuo' && anterior.get(k) !== 'recuo') recuos.set(k, (recuos.get(k) ?? 0) + 1);
@@ -104,7 +113,7 @@ test('bot ferido recua uma vez só por round', () => {
     }
     for (const [k, n] of recuos) if (n > 1) vaivem.push(`seed ${seed} round:bot ${k} recuou ${n}x`);
   }
-  assert.deepEqual(vaivem, []);
+  expect(vaivem).toStrictEqual([]);
 });
 
 // Dois T vivos e a C4 solta longe dos dois. A rota de quem vai buscar começa se afastando da C4 (o caminho
@@ -112,10 +121,11 @@ test('bot ferido recua uma vez só por round', () => {
 // vaivém de poucos metros. Quem foi escolhido tem que continuar indo.
 test('só um T vai buscar a C4 solta, sem trocar a vez', () => {
   const W = MAPA.waypoints;
-  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(3) });
+  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(3) }) as Mundo;
   mundo.entidades[0].bot = true;
   posicionarParaRound(mundo, 'A');
   mundo.bomba = criarBomba(mundo, 'laranja');
+  const bomba = mundo.bomba;
   const ts = mundo.entidades.filter((e) => e.time === 'laranja');
   for (const e of mundo.entidades) if (e.time === 'azul' || ts.indexOf(e) >= 2) { e.vivo = false; e.hp = 0; }
   const [a, b] = ts;
@@ -124,19 +134,20 @@ test('só um T vai buscar a C4 solta, sem trocar a vez', () => {
   b.pos = { x: W[9].x, y: 0, z: W[9].z };
   const rng = criarRng(7);
   for (const e of mundo.entidades) e.cerebro = criarCerebro(e, grafo, rng, MAPA.caixas, mundo);
-  mundo.bomba.portador = null; // C4 caída perto da base B
-  mundo.bomba.pos = { x: W[20].x + 0.5, y: 0, z: W[20].z + 0.5 };
-  const trocas = { [a.id]: 0, [b.id]: 0 };
-  const chave = { [a.id]: a.cerebro.chaveBomba, [b.id]: b.cerebro.chaveBomba };
-  for (let i = 0; i < 15 / DT && mundo.bomba.portador === null; i++) {
-    const cmds = new Map();
+  bomba.portador = null; // C4 caída perto da base B
+  bomba.pos = { x: W[20].x + 0.5, y: 0, z: W[20].z + 0.5 };
+  const cerebroDe = (e: typeof a): Cerebro => e.cerebro as Cerebro;
+  const trocas: Record<number, number> = { [a.id]: 0, [b.id]: 0 };
+  const chave = { [a.id]: cerebroDe(a).chaveBomba, [b.id]: cerebroDe(b).chaveBomba };
+  for (let i = 0; i < 15 / DT && bomba.portador === null; i++) {
+    const cmds = new Map<number, Comandos>();
     for (const e of [a, b]) cmds.set(e.id, pensar(e, mundo, grafo, 'medio', DT, rng));
     passo(mundo, DT, cmds);
     for (const e of [a, b]) {
-      if (e.cerebro.chaveBomba !== chave[e.id]) trocas[e.id] += 1;
-      chave[e.id] = e.cerebro.chaveBomba;
+      if (cerebroDe(e).chaveBomba !== chave[e.id]) trocas[e.id] += 1;
+      chave[e.id] = cerebroDe(e).chaveBomba;
     }
   }
-  assert.ok(trocas[a.id] <= 1 && trocas[b.id] <= 1, `trocas de objetivo: ${JSON.stringify(trocas)}`);
-  assert.equal([a, b].filter((e) => e.cerebro.chaveBomba === 'solta').length, 1);
+  expect(trocas[a.id] <= 1 && trocas[b.id] <= 1, `trocas de objetivo: ${JSON.stringify(trocas)}`).toBeTruthy();
+  expect([a, b].filter((e) => cerebroDe(e).chaveBomba === 'solta').length).toBe(1);
 });

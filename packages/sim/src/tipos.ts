@@ -367,6 +367,12 @@ export interface Mapa {
 
 // ---------- Granadas no mundo ----------
 
+/** Força do arremesso (`GRANADA.forcas` em config.ts): o curto sai 0,3 m mais baixo. */
+export type ForcaGranada = 'longe' | 'medio' | 'curto';
+
+/** Aplica o dano da HE e do fogo (`atualizarGranadas` em granadas.ts; o `mundo` usa o mesmo cálculo dos tiros). */
+export type DanoDireto = (dono: Entidade, alvo: Entidade, dano: number, tipoArma: CausaDano, eventos: Evento[]) => void;
+
 /** Granada em voo (`lancar` em granadas.ts). */
 export interface GranadaNoAr {
   tipo: TipoGranada;
