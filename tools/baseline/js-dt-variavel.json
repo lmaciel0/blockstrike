@@ -1,0 +1,384 @@
+{
+  "dt": {
+    "modo": "variavel",
+    "min": 0.006944444444444444,
+    "max": 0.05
+  },
+  "partidas": [
+    {
+      "dificuldade": "facil",
+      "seed": 1,
+      "rounds": 21,
+      "placar": {
+        "azul": 13,
+        "laranja": 8
+      },
+      "mortes": 135,
+      "cabecas": 73,
+      "presos": 0,
+      "dinheiroFinal": [
+        7650,
+        5200,
+        9800,
+        8050,
+        7550,
+        3450,
+        2950,
+        2450,
+        2450,
+        12600
+      ],
+      "hash": "3ebed80c"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 2,
+      "rounds": 20,
+      "placar": {
+        "azul": 13,
+        "laranja": 7
+      },
+      "mortes": 97,
+      "cabecas": 65,
+      "presos": 0,
+      "dinheiroFinal": [
+        10900,
+        14850,
+        15150,
+        15250,
+        11050,
+        2450,
+        2450,
+        4750,
+        2500,
+        4000
+      ],
+      "hash": "801bfe21"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 3,
+      "rounds": 24,
+      "placar": {
+        "azul": 11,
+        "laranja": 13
+      },
+      "mortes": 141,
+      "cabecas": 79,
+      "presos": 0,
+      "dinheiroFinal": [
+        3750,
+        5050,
+        11600,
+        4100,
+        3850,
+        11450,
+        4800,
+        16000,
+        4850,
+        14850
+      ],
+      "hash": "1f185ee0"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 4,
+      "rounds": 19,
+      "placar": {
+        "azul": 6,
+        "laranja": 13
+      },
+      "mortes": 115,
+      "cabecas": 67,
+      "presos": 0,
+      "dinheiroFinal": [
+        3450,
+        3450,
+        4600,
+        3700,
+        3450,
+        8600,
+        3250,
+        11550,
+        8250,
+        5700
+      ],
+      "hash": "1ffbeb1a"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 5,
+      "rounds": 21,
+      "placar": {
+        "azul": 13,
+        "laranja": 8
+      },
+      "mortes": 130,
+      "cabecas": 72,
+      "presos": 0,
+      "dinheiroFinal": [
+        4250,
+        16000,
+        12500,
+        13850,
+        5950,
+        3400,
+        5000,
+        4050,
+        3500,
+        3450
+      ],
+      "hash": "65a2d436"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 1,
+      "rounds": 19,
+      "placar": {
+        "azul": 13,
+        "laranja": 6
+      },
+      "mortes": 109,
+      "cabecas": 65,
+      "presos": 0,
+      "dinheiroFinal": [
+        10600,
+        10100,
+        13500,
+        12900,
+        4900,
+        2900,
+        2950,
+        2950,
+        2900,
+        4600
+      ],
+      "hash": "d834bfe3"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 2,
+      "rounds": 21,
+      "placar": {
+        "azul": 8,
+        "laranja": 13
+      },
+      "mortes": 133,
+      "cabecas": 92,
+      "presos": 0,
+      "dinheiroFinal": [
+        6150,
+        3650,
+        6750,
+        4100,
+        5850,
+        7750,
+        3400,
+        6800,
+        3600,
+        14900
+      ],
+      "hash": "4305f81f"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 3,
+      "rounds": 18,
+      "placar": {
+        "azul": 5,
+        "laranja": 13
+      },
+      "mortes": 116,
+      "cabecas": 79,
+      "presos": 0,
+      "dinheiroFinal": [
+        2900,
+        2900,
+        3000,
+        3650,
+        2900,
+        11350,
+        4550,
+        7850,
+        4600,
+        5100
+      ],
+      "hash": "c4c8397a"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 4,
+      "rounds": 22,
+      "placar": {
+        "azul": 9,
+        "laranja": 13
+      },
+      "mortes": 129,
+      "cabecas": 94,
+      "presos": 0,
+      "dinheiroFinal": [
+        6550,
+        9600,
+        9850,
+        8500,
+        7750,
+        3650,
+        3850,
+        4450,
+        3250,
+        3600
+      ],
+      "hash": "22999e50"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 5,
+      "rounds": 18,
+      "placar": {
+        "azul": 13,
+        "laranja": 5
+      },
+      "mortes": 116,
+      "cabecas": 77,
+      "presos": 0,
+      "dinheiroFinal": [
+        6450,
+        5550,
+        5450,
+        7150,
+        8050,
+        3000,
+        3700,
+        2500,
+        3000,
+        2600
+      ],
+      "hash": "59f2ea24"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 1,
+      "rounds": 24,
+      "placar": {
+        "azul": 13,
+        "laranja": 11
+      },
+      "mortes": 155,
+      "cabecas": 112,
+      "presos": 0,
+      "dinheiroFinal": [
+        11250,
+        5600,
+        12600,
+        10100,
+        5000,
+        3700,
+        3450,
+        5750,
+        3400,
+        8350
+      ],
+      "hash": "7b3ea1f0"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 2,
+      "rounds": 24,
+      "placar": {
+        "azul": 13,
+        "laranja": 11
+      },
+      "mortes": 151,
+      "cabecas": 120,
+      "presos": 0,
+      "dinheiroFinal": [
+        13750,
+        3300,
+        14100,
+        8300,
+        6300,
+        8400,
+        5000,
+        3000,
+        6850,
+        2950
+      ],
+      "hash": "9ccec2e6"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 3,
+      "rounds": 24,
+      "placar": {
+        "azul": 11,
+        "laranja": 12
+      },
+      "mortes": 160,
+      "cabecas": 131,
+      "presos": 0,
+      "dinheiroFinal": [
+        13300,
+        3300,
+        6850,
+        9700,
+        11100,
+        2500,
+        2400,
+        3800,
+        2400,
+        2400
+      ],
+      "hash": "065ec91a"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 4,
+      "rounds": 15,
+      "placar": {
+        "azul": 13,
+        "laranja": 2
+      },
+      "mortes": 89,
+      "cabecas": 59,
+      "presos": 0,
+      "dinheiroFinal": [
+        6200,
+        4650,
+        5800,
+        5200,
+        6500,
+        2400,
+        3000,
+        2400,
+        2400,
+        2400
+      ],
+      "hash": "8896b79b"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 5,
+      "rounds": 17,
+      "placar": {
+        "azul": 13,
+        "laranja": 4
+      },
+      "mortes": 116,
+      "cabecas": 88,
+      "presos": 0,
+      "dinheiroFinal": [
+        11600,
+        13800,
+        9950,
+        11500,
+        11000,
+        3450,
+        3500,
+        3450,
+        3500,
+        3400
+      ],
+      "hash": "5c4b48f6"
+    }
+  ]
+}
