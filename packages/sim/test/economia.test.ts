@@ -17,11 +17,10 @@ const cmd = (extra: Partial<Comandos> = {}): Comandos => ({
 // Entidade depois de `iniciarEconomia` + `posicionarParaRound`: dinheiro, equip e armas já existem.
 type EntidadeEco = Entidade & { dinheiro: number; equip: Equip; armas: ArmasEntidade };
 type MundoEco = Mundo & { entidades: EntidadeEco[] };
-// `criarMundo` ainda é JS sem tipos (mundo.ts tem @ts-nocheck): o cast abaixo cai quando ele for tipado.
 function cenario(): MundoEco {
   const mundo = criarMundo({
     mapa: { ...MAPA, caixas: [chao] }, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(5),
-  }) as Mundo;
+  });
   E.iniciarEconomia(mundo);
   posicionarParaRound(mundo, 'A');
   mundo.entidades.forEach((e, i) => { e.pos = { x: 40, y: 0, z: -40 + i }; });
@@ -222,7 +221,7 @@ test('botComprar: sem dinheiro só colete; com dinheiro, arma + colete com capac
 });
 
 test('sem economia (treino) nada muda: todos têm primária e dano sem colete', () => {
-  const m = criarMundo({ mapa: { ...MAPA, caixas: [chao] }, primariaJogador: 'smg', dificuldade: 'medio', rng: criarRng(2) }) as Mundo;
+  const m = criarMundo({ mapa: { ...MAPA, caixas: [chao] }, primariaJogador: 'smg', dificuldade: 'medio', rng: criarRng(2) });
   posicionarParaRound(m, 'A');
   expect(m.economia).toBe(undefined);
   expect(m.entidades[0].armas!.primaria!.tipo).toBe('smg');

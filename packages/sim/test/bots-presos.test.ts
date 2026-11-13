@@ -52,9 +52,8 @@ function episodiosPresos(log: Registro[]): Omit<Aberto, 'ultimo'>[] {
 }
 
 // Partida só de bots (laço de bs-sim-partida.mjs) pelos primeiros `rounds` rounds; registro por passo e bot vivo.
-// `criarMundo` ainda é JS sem tipos (mundo.ts tem @ts-nocheck): o cast abaixo cai quando ele for tipado.
 function simular(seed: number, rounds: number): Registro[] {
-  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(seed) }) as Mundo;
+  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(seed) });
   mundo.entidades[0].bot = true;
   E.iniciarEconomia(mundo);
   const rng = criarRng(seed * 77);
@@ -121,7 +120,7 @@ test('bot ferido recua uma vez só por round', () => {
 // vaivém de poucos metros. Quem foi escolhido tem que continuar indo.
 test('só um T vai buscar a C4 solta, sem trocar a vez', () => {
   const W = MAPA.waypoints;
-  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(3) }) as Mundo;
+  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(3) });
   mundo.entidades[0].bot = true;
   posicionarParaRound(mundo, 'A');
   mundo.bomba = criarBomba(mundo, 'laranja');

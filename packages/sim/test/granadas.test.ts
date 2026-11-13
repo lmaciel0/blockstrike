@@ -16,11 +16,10 @@ const cmd = (extra: Partial<Comandos> = {}): Comandos => ({
   frente: 0, lado: 0, pular: false, agachar: false, devagar: false, atirar: false,
   zoom: false, recarregar: false, usar: false, granada: null, slot: null, yaw: 0, pitch: 0, ...extra,
 });
-// `criarMundo` ainda é JS sem tipos (mundo.ts tem @ts-nocheck): o cast abaixo cai quando ele for tipado.
 function cenario(caixas: Caixa[] = [chao], economia = true): Mundo {
   const mundo = criarMundo({
     mapa: { ...MAPA, caixas }, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(9),
-  }) as Mundo;
+  });
   if (economia) E.iniciarEconomia(mundo);
   posicionarParaRound(mundo, 'A');
   mundo.entidades.forEach((e, i) => { e.pos = { x: 50, y: 0, z: 50 - i * 0.5 }; e.noChao = true; });

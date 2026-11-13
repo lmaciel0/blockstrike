@@ -26,13 +26,12 @@ interface OpcoesCena {
 type PartidaDeBot = Entidade & { armas: ArmasEntidade & { primaria: Arma } };
 
 // Mundo com só o bot 1 (azul) e o inimigo 5 (laranja) vivos, em posições à mão.
-// `criarMundo` ainda é JS sem tipos (mundo.ts tem @ts-nocheck): o cast abaixo cai quando ele for tipado.
 function cena(
   { caixas = [chao], bot = { x: 0, z: 0 }, yaw = 0, inimigo = { x: 0, z: -10 }, seed = 1 }: OpcoesCena = {},
 ): { mundo: Mundo; b: PartidaDeBot; alvo: Entidade } {
   const mundo = criarMundo({
     mapa: { ...MAPA, caixas }, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(seed),
-  }) as Mundo;
+  });
   posicionarParaRound(mundo, 'A');
   for (const e of mundo.entidades) e.vivo = false;
   const b = mundo.entidades[1] as PartidaDeBot;
@@ -88,7 +87,7 @@ test('nunca escolhe faca e respeita os pesos', () => {
 });
 
 test('criarCerebro começa em rota até a metade inimiga', () => {
-  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(5) }) as Mundo;
+  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(5) });
   posicionarParaRound(mundo, 'A');
   const rng = criarRng(6);
   const destinos = new Set<string>();
@@ -211,9 +210,9 @@ test('mundo grava ultimoDanoDe no bot atingido', () => {
   j.pos = { x: 0, y: 0, z: 10 };
   j.yaw = 0;
   j.pitch = Math.atan2(1.1 - 1.6, 10);
-  // Sem `usar` e `granada`, como no teste original: `passo` ainda é JS sem tipos (aceita qualquer comando).
+  // Sem `usar` e `granada`, como no teste original: os campos que faltam valem undefined (falso) no `passo`.
   const cmd = { frente: 0, lado: 0, pular: false, agachar: false, devagar: false, atirar: true,
-    zoom: false, recarregar: false, slot: null, yaw: 0, pitch: j.pitch };
+    zoom: false, recarregar: false, slot: null, yaw: 0, pitch: j.pitch } as Comandos;
   const ev = passo(mundo, DT, new Map([[0, cmd], [b.id, { ...cmd, atirar: false, yaw: b.yaw, pitch: 0 }]]));
   expect(ev.some((e) => e.tipo === 'acerto' && e.alvo === b.id), JSON.stringify(ev)).toBeTruthy();
   expect(b.cerebro.ultimoDanoDe).toBe(0);
@@ -222,7 +221,7 @@ test('mundo grava ultimoDanoDe no bot atingido', () => {
 // Integração: 5×5 bots por 120 s no médio (o limite de 10 s do original vira o timeout do Vitest).
 test('integração: 5×5 bots por 120 s no médio', () => {
   const inicio = Date.now();
-  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(21) }) as Mundo;
+  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(21) });
   posicionarParaRound(mundo, 'A');
   const grafo = criarGrafo(MAPA.waypoints, MAPA.arestas);
   const rng = criarRng(22);
@@ -280,7 +279,7 @@ test('compensação de recuo não sobe para a cabeça', () => {
 });
 
 test('freeze sem pensar: a rota fica no início e os bots seguem pela rota depois', () => {
-  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(31) }) as Mundo;
+  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(31) });
   posicionarParaRound(mundo, 'A');
   const grafo = criarGrafo(MAPA.waypoints, MAPA.arestas);
   const rng = criarRng(32);
@@ -323,13 +322,13 @@ test('desencalhe só conta quadros em que o bot tentava andar', () => {
 test('tiro silenciado só é ouvido de perto; tiro normal chega longe', () => {
   const casos: ['rifleS' | 'rifle', boolean, boolean][] = [['rifleS', true, false], ['rifle', true, true]];
   for (const [arma, perto, longe] of casos) {
-    const mundo = criarMundo({ mapa: MAPA, primariaJogador: arma, dificuldade: 'medio', rng: criarRng(9) }) as Mundo;
+    const mundo = criarMundo({ mapa: MAPA, primariaJogador: arma, dificuldade: 'medio', rng: criarRng(9) });
     posicionarParaRound(mundo, 'A');
     const eu = mundo.entidades[0];
     eu.armas!.primaria = criarArma(arma);
     eu.slot = 'primaria';
     eu.pos = { x: 0, y: 0, z: 10 };
-    passo(mundo, 0.016, new Map([[0, { frente: 0, lado: 0, yaw: 0, pitch: 0, atirar: true }]]));
+    passo(mundo, 0.016, new Map([[0, { frente: 0, lado: 0, yaw: 0, pitch: 0, atirar: true } as Comandos]])); // parcial, como no teste original
     const ruido = mundo.ruidos.find((r) => r.id === 0);
     expect(ruido, arma).toBeTruthy();
     const bot = mundo.entidades[5];

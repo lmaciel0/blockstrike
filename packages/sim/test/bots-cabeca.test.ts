@@ -17,12 +17,11 @@ const grafo = criarGrafo(MAPA.waypoints, MAPA.arestas);
 interface Fatia { acertos: number; fatia: number }
 
 // Bots contra bots (os 10, inclusive o "jogador") em rounds seedados; devolve a fatia de acertos na cabeça.
-// `criarMundo` ainda é JS sem tipos (mundo.ts tem @ts-nocheck): o cast abaixo cai quando ele for tipado.
 function fatiaCabeca(dif: NomeDificuldade): Fatia {
   let acertos = 0;
   let cabecas = 0;
   for (let r = 0; r < ROUNDS; r++) {
-    const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: dif, rng: criarRng(100 + r) }) as Mundo;
+    const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: dif, rng: criarRng(100 + r) });
     mundo.entidades[0].bot = true;
     posicionarParaRound(mundo, r % 2 ? 'A' : 'B');
     const rng = criarRng(500 + r);

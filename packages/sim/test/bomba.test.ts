@@ -14,12 +14,11 @@ const cmd = (extra: Partial<Comandos> = {}): Comandos => ({
 });
 
 // Round 1: laranja é T. Todos longe, exceto o que o teste mexer. Entidade 5 = T, 0 = CT.
-// `criarMundo` ainda é JS sem tipos (mundo.ts tem @ts-nocheck): o cast abaixo cai quando ele for tipado.
 type MundoComBomba = Mundo & { bomba: Bomba };
 function cenario(): MundoComBomba {
   const mundo = criarMundo({
     mapa: { ...MAPA, caixas: [chao] }, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(11),
-  }) as Mundo;
+  });
   posicionarParaRound(mundo, 'A');
   mundo.entidades.forEach((e, i) => { e.pos = { x: 45, y: 0, z: -45 + i * 0.5 }; e.noChao = true; });
   mundo.bomba = criarBomba(mundo, 'laranja');

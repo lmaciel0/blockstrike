@@ -441,6 +441,36 @@ export interface Mundo {
   economia?: boolean;
 }
 
+/** Entrada de `criarMundo` (mundo.ts). `modo` omitido = 'partida'. */
+export interface OpcoesMundo {
+  mapa: Mapa;
+  primariaJogador: TipoPrimaria;
+  dificuldade: Dificuldade | NomeDificuldade;
+  rng: Rng;
+  modo?: Modo;
+}
+
+/** Opções de `passo` (mundo.ts): `congelado` padrão false, `comBomba` padrão true. */
+export interface OpcoesPasso { congelado?: boolean; comBomba?: boolean }
+
+/** O que `aplicarDano` (mundo.ts) lê de um golpe: o raycast traz `dist` também, o dano direto da granada não. */
+export type Golpe = Pick<AcertoEntidade, 'ent' | 'parte' | 'ponto'>;
+
+/** Linha de `relatorioDano` (mundo.ts): um inimigo com quem `id` trocou dano no round. */
+export interface LinhaDano {
+  id: number;
+  nome: string;
+  time: Time;
+  vivo: boolean;
+  deu: RegistroDano;
+  levou: RegistroDano;
+}
+
+/** `registrarMvp` (mundo.ts): `kills` e `dano` só existem quando o MVP veio dos abates. */
+export type Mvp =
+  | { id: number; motivo: 'desarmou' | 'plantou'; kills?: undefined; dano?: undefined }
+  | { id: number; motivo: 'abates'; kills: number; dano: number };
+
 // ---------- Eventos ----------
 
 /**

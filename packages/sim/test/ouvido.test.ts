@@ -7,17 +7,16 @@ import { criarRng } from '../src/rng.js';
 import type { Caixa, Comandos, Mundo } from '../src/tipos.js';
 
 const chao: Caixa = { min: { x: -50, y: -1, z: -50 }, max: { x: 50, y: 0, z: 50 }, cor: 0x888888 };
-// Sem `usar` e `granada`, como no teste original: `passo` ainda é JS sem tipos (aceita qualquer comando).
-const cmd = (extra: Partial<Comandos> = {}): Partial<Comandos> => ({
+// Sem `usar` e `granada`, como no teste original: os campos que faltam valem undefined (falso) no `passo`.
+const cmd = (extra: Partial<Comandos> = {}): Comandos => ({
   frente: 0, lado: 0, pular: false, agachar: false, devagar: false, atirar: false,
   zoom: false, recarregar: false, slot: null, yaw: 0, pitch: 0, ...extra,
-});
+}) as Comandos;
 
-// `criarMundo` ainda é JS sem tipos (mundo.ts tem @ts-nocheck): o cast abaixo cai quando ele for tipado.
 function cenario(): Mundo {
   const mundo = criarMundo({
     mapa: { ...MAPA, caixas: [chao] }, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(1),
-  }) as Mundo;
+  });
   posicionarParaRound(mundo, 'A');
   for (const e of mundo.entidades) e.pos = { x: 40, y: 0, z: 40 + e.id * 0.01 }; // todos longe
   return mundo;

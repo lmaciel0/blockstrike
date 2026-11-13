@@ -7,7 +7,7 @@
 import { COLETE, ECONOMIA, ITENS, MAX_GRANADAS, familia } from './config.js';
 import { criarArma } from './armas.js';
 import type {
-  ArmasEntidade, DanoComColete, Entidade, Equip, IdItem, ItemCompra, MotivoCompra, Mundo, ParteCorpo, Papel,
+  ArmasEntidade, CausaDano, DanoComColete, Entidade, Equip, IdItem, ItemCompra, MotivoCompra, Mundo, ParteCorpo, Papel,
   Partida, ResultadoCompra, Time, TipoArma, TipoGranada, TipoPrimaria,
 } from './tipos.js';
 
@@ -36,9 +36,10 @@ export function resetarEconomia(mundo: Mundo, partida: Partida): void {
 const limitar = (n: number): number => Math.min(ECONOMIA.maximo, n);
 
 // Dinheiro por abate, conforme a arma; só conta inimigo.
-export function premiarKill(atirador: Entidade, tipoArma: TipoArma): void {
+export function premiarKill(atirador: Entidade, tipoArma: TipoArma | CausaDano): void {
   if (atirador.dinheiro === undefined) return;
-  atirador.dinheiro = limitar(atirador.dinheiro + (ECONOMIA.recompensaKill[familia(tipoArma)] ?? 300));
+  // HE e molotov (`CausaDano`) não estão em `ARMAS` nem em `recompensaKill`: caem nos 300 do padrão.
+  atirador.dinheiro = limitar(atirador.dinheiro + (ECONOMIA.recompensaKill[familia(tipoArma as TipoArma)] ?? 300));
 }
 
 // Fim do round: o vencedor ganha o bônus de vitória; quem perde ganha o de derrota, que cresce a cada derrota seguida.

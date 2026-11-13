@@ -9,9 +9,8 @@ import type { Bomba, Cerebro, Comandos, Entidade, Evento, Grafo, Mundo, Rng, Tim
 
 interface Cena { mundo: Mundo & { bomba: Bomba }; grafo: Grafo; rng: Rng }
 
-// `criarMundo` ainda é JS sem tipos (mundo.ts tem @ts-nocheck): o cast abaixo cai quando ele for tipado.
 function cenario(seed = 3): Cena {
-  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(seed) }) as Mundo;
+  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(seed) });
   mundo.entidades[0].bot = true; // o "jogador" também é um bot na simulação
   posicionarParaRound(mundo, 'A');
   const grafo = criarGrafo(MAPA.waypoints, MAPA.arestas);

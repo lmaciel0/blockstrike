@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Block Strike — estado do mundo e movimento das entidades.
  * Módulo puro: sem Three.js e sem DOM. Unidades em metros e segundos.
@@ -15,6 +14,11 @@ import { armasDoEquip, danoComColete, perderEquip, premiarKill } from './economi
 import {
   abrirBuracos, atualizarGranadas, atualizarMao, criarMao, granadasDe, lancar, limparGranadas, proximaGranada,
 } from './granadas.js';
+import type {
+  AcertoEntidade, Agindo, Arma, ArmasEntidade, Caixa, CausaDano, Comandos, Desvio, Entidade, EstadoTiro, Evento, Golpe,
+  Lado, LinhaDano, Mao, MotivoFimRound, Mundo, Mvp, OpcoesMundo, OpcoesPasso, RegistroDano, Slot, SlotPedido, Time,
+  TipoArmaDeFogo, TipoPrimaria, Vec3, Vivos,
+} from './tipos.js';
 
 const PITCH_MAX = 1.5;
 const DIST_PASSO = 1.8;
@@ -28,7 +32,7 @@ const OUVIR_TIRO = 40; // m: tiro sem silenciador chama a atenção dos bots at�
 const OUVIR_TIRO_SILENCIADO = 8;
 const DANO_ASSISTENCIA = 40; // dano acima disto numa vítima que outro aliado matou conta assistência
 
-function criarEntidade(id, nome, time, bot, primariaEscolhida) {
+function criarEntidade(id: number, nome: string, time: Time, bot: boolean, primariaEscolhida: TipoPrimaria): Entidade {
   return {
     id, nome, time, bot,
     pos: { x: 0, y: 0, z: 0 }, velY: 0, yaw: 0, pitch: 0,
@@ -40,11 +44,11 @@ function criarEntidade(id, nome, time, bot, primariaEscolhida) {
 }
 
 // modo 'treino': só o jogador no mapa, munição de reserva infinita e sem rounds.
-export function criarMundo({ mapa, primariaJogador, dificuldade, rng, modo = 'partida' }) {
-  const entidades = [criarEntidade(ID_JOGADOR, 'Você', 'azul', false, primariaJogador)];
+export function criarMundo({ mapa, primariaJogador, dificuldade, rng, modo = 'partida' }: OpcoesMundo): Mundo {
+  const entidades: Entidade[] = [criarEntidade(ID_JOGADOR, 'Você', 'azul', false, primariaJogador)];
   // Índice entre os bots do time: o 0 (sniper) é o primeiro bot, já que o jogador fica com a dele.
   for (let i = 1; i < (modo === 'treino' ? 1 : 10); i++) {
-    const time = i < 5 ? 'azul' : 'laranja';
+    const time: Time = i < 5 ? 'azul' : 'laranja';
     const indice = i < 5 ? i - 1 : i - 5;
     entidades.push(criarEntidade(i, `Bot ${NOMES_BOTS[i - 1]}`, time, true, escolherPrimaria(indice, rng)));
   }
@@ -54,7 +58,7 @@ export function criarMundo({ mapa, primariaJogador, dificuldade, rng, modo = 'pa
 // Passos e pousos viram ruído que os bots do outro time ouvem (ver `ouvir` em bots.js).
 // Quem anda com Shift ou agachado não emite 'passo', então não deixa rastro aqui.
 // Tiros também: os normais chegam longe, os silenciados só de perto.
-function registrarRuidos(mundo, eventos) {
+function registrarRuidos(mundo: Mundo, eventos: Evento[]): void {
   for (const ev of eventos) {
     if (ev.tipo === 'tiro') {
       const e = mundo.entidades[ev.atirador];
@@ -70,10 +74,10 @@ function registrarRuidos(mundo, eventos) {
   while (mundo.ruidos.length && mundo.ruidos[0].em < limite) mundo.ruidos.shift();
 }
 
-export function posicionarParaRound(mundo, ladoAzul) {
+export function posicionarParaRound(mundo: Mundo, ladoAzul: Lado): void {
   limparGranadas(mundo);
   mundo.danos.clear();
-  const ladoLaranja = ladoAzul === 'A' ? 'B' : 'A';
+  const ladoLaranja: Lado = ladoAzul === 'A' ? 'B' : 'A';
   mundo.entidades.forEach((e, i) => {
     const lado = e.time === 'azul' ? ladoAzul : ladoLaranja;
     const idx = e.time === 'azul' ? i : i - 5;
@@ -90,11 +94,11 @@ export function posicionarParaRound(mundo, ladoAzul) {
     e.killsRound = 0;
     if (mundo.economia) {
       // Com economia vale o que foi comprado (e sobreviveu): sem primária, começa com a pistola na mão.
-      e.armas = armasDoEquip(e);
+      e.armas = armasDoEquip(e) as ArmasEntidade; // a mão da granada entra na linha de baixo
       e.armas.granada = criarMao();
       e.slot = e.armas.primaria ? 'primaria' : 'pistola';
       e.slotAnterior = e.armas.primaria ? 'pistola' : 'faca';
-      e.kit = e.equip.kit;
+      e.kit = e.equip!.kit;
     } else {
       e.slot = 'primaria';
       e.slotAnterior = 'pistola';
@@ -108,18 +112,20 @@ export function posicionarParaRound(mundo, ladoAzul) {
   });
 }
 
-const idle = (e) => ({
+const idle = (e: Entidade): Comandos => ({
   frente: 0, lado: 0, pular: false, agachar: false, devagar: false, atirar: false,
   zoom: false, recarregar: false, usar: false, granada: null, slot: null, yaw: e.yaw, pitch: e.pitch,
 });
 
 // Só levanta se o corpo em pé couber (sem teto em cima).
-function podeLevantar(e, caixas) {
+function podeLevantar(e: Entidade, caixas: Caixa[]): boolean {
   const r = moverComColisao(e.pos, { x: 0, y: 0.001, z: 0 }, JOGADOR.raio, JOGADOR.altura, caixas);
   return !r.bateuTeto;
 }
 
-function moverEntidade(e, cmd, dt, caixas, congelado, eventos) {
+function moverEntidade(
+  e: Entidade, cmd: Comandos, dt: number, caixas: Caixa[], congelado: boolean, eventos: Evento[],
+): void {
   e.yaw = cmd.yaw;
   e.pitch = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, cmd.pitch));
 
@@ -173,7 +179,7 @@ function moverEntidade(e, cmd, dt, caixas, congelado, eventos) {
 }
 
 // A faca com o olho dentro da hitbox do alvo: o raycast ignora origem interna, então testa à parte.
-function alvoColado(o, entidades, ignorarId) {
+function alvoColado(o: Vec3, entidades: Entidade[], ignorarId: number): AcertoEntidade | null {
   for (const ent of entidades) {
     if (!ent.vivo || ent.id === ignorarId) continue;
     for (const hb of hitboxes(ent)) {
@@ -186,7 +192,7 @@ function alvoColado(o, entidades, ignorarId) {
 }
 
 // Dano do round por par atacante→vítima, chave `de>para`: { dano, acertos }. Conta só a vida que saiu de fato.
-function registrarDano(mundo, de, para, dano) {
+function registrarDano(mundo: Mundo, de: number, para: number, dano: number): void {
   const chave = `${de}>${para}`;
   const r = mundo.danos.get(chave) ?? { dano: 0, acertos: 0 };
   r.dano += dano;
@@ -194,11 +200,11 @@ function registrarDano(mundo, de, para, dano) {
   mundo.danos.set(chave, r);
 }
 
-const danoEntre = (mundo, de, para) => mundo.danos.get(`${de}>${para}`) ?? { dano: 0, acertos: 0 };
+const danoEntre = (mundo: Mundo, de: number, para: number): RegistroDano => mundo.danos.get(`${de}>${para}`) ?? { dano: 0, acertos: 0 };
 
 // Aliado de quem matou com mais de DANO_ASSISTENCIA na vítima neste round (o de maior dano), ou null.
-function assistenteDe(mundo, vitima, assassino) {
-  let melhor = null;
+function assistenteDe(mundo: Mundo, vitima: Entidade, assassino: Entidade): Entidade | null {
+  let melhor: Entidade | null = null;
   let maior = DANO_ASSISTENCIA;
   for (const e of mundo.entidades) {
     if (e.id === assassino.id || e.time !== assassino.time) continue;
@@ -209,9 +215,9 @@ function assistenteDe(mundo, vitima, assassino) {
 }
 
 // Relatório do round para `id`: um item por inimigo com quem trocou dano (deu e levou, em vida e acertos).
-export function relatorioDano(mundo, id) {
+export function relatorioDano(mundo: Mundo, id: number): LinhaDano[] {
   const eu = mundo.entidades[id];
-  const linhas = [];
+  const linhas: LinhaDano[] = [];
   for (const o of mundo.entidades) {
     if (o.time === eu.time) continue;
     const deu = danoEntre(mundo, id, o.id);
@@ -223,18 +229,18 @@ export function relatorioDano(mundo, id) {
 
 // MVP do round, só no time vencedor: quem desarmou, quem plantou a C4 que explodiu, ou quem mais matou
 // (desempate pelo dano causado). Round sem abates nem bomba não tem MVP. Soma a estrela em `mvps`.
-export function registrarMvp(mundo, vencedor, motivo) {
+export function registrarMvp(mundo: Mundo, vencedor: Time | null, motivo: MotivoFimRound | null): Mvp | null {
   const mvp = mvpDoRound(mundo, vencedor, motivo);
   if (mvp) mundo.entidades[mvp.id].mvps += 1;
   return mvp;
 }
 
-function mvpDoRound(mundo, vencedor, motivo) {
+function mvpDoRound(mundo: Mundo, vencedor: Time | null, motivo: MotivoFimRound | null): Mvp | null {
   if (!vencedor) return null;
   const b = mundo.bomba;
   if (motivo === 'bomba-desarmada' && b?.desarmador != null) return { id: b.desarmador, motivo: 'desarmou' };
   if (motivo === 'bomba-explodiu' && b?.plantador != null) return { id: b.plantador, motivo: 'plantou' };
-  let melhor = null;
+  let melhor: Extract<Mvp, { motivo: 'abates' }> | null = null;
   for (const e of mundo.entidades) {
     if (e.time !== vencedor || e.killsRound === 0) continue;
     let dano = 0;
@@ -247,18 +253,21 @@ function mvpDoRound(mundo, vencedor, motivo) {
 }
 
 // `danoFixo`: a faca tira o mesmo em qualquer parte do corpo (só as costas mudam o valor).
-function aplicarDano(mundo, atirador, tipo, golpe, eventos, danoFixo) {
+function aplicarDano(
+  mundo: Mundo, atirador: Entidade, tipo: CausaDano, golpe: Golpe, eventos: Evento[], danoFixo?: number,
+): void {
   const alvo = golpe.ent;
   if (alvo.time === atirador.time) return; // fogo amigo desligado (mas o corpo bloqueia o tiro)
   if (alvo.hp <= 0) return; // morte já registrada neste passo, só falta o `vivo` cair
-  let dano = danoFixo ?? danoDe(tipo, golpe.parte);
+  // Sem `danoFixo` só chega bala (`atirarRaio`): faca, HE e fogo sempre trazem o dano pronto.
+  let dano = danoFixo ?? danoDe(tipo as TipoArmaDeFogo, golpe.parte);
   // Tiro no capacete (fagulhas e "plink"): sem colete o capacete não protege mais (ver danoComColete).
   const capacete = golpe.parte === 'cabeca' && tipo !== 'faca' &&
-    Boolean(mundo.economia && alvo.equip.capacete && alvo.equip.colete > 0);
+    Boolean(mundo.economia && alvo.equip!.capacete && alvo.equip!.colete > 0);
   if (mundo.economia && tipo !== 'molotov') { // o fogo ignora o colete, como no CS
-    const r = danoComColete(alvo.equip, golpe.parte, dano);
+    const r = danoComColete(alvo.equip!, golpe.parte, dano);
     dano = r.dano;
-    alvo.equip.colete = r.colete;
+    alvo.equip!.colete = r.colete;
   }
   registrarDano(mundo, atirador.id, alvo.id, Math.min(dano, alvo.hp));
   alvo.hp = Math.max(0, alvo.hp - dano);
@@ -279,12 +288,12 @@ function aplicarDano(mundo, atirador, tipo, golpe, eventos, danoFixo) {
 }
 
 // Um raio (bala ou chumbo): para no primeiro entre caixa e entidade.
-function atirarRaio(mundo, e, tipo, desvio, eventos) {
+function atirarRaio(mundo: Mundo, e: Entidade, tipo: TipoArmaDeFogo, desvio: Desvio, eventos: Evento[]): void {
   const o = olho(e);
   const dir = direcao(e.yaw + desvio.dx, e.pitch + desvio.dy);
   const parede = raycastCaixas(o, dir, mundo.mapa.caixas, ALCANCE_TIRO);
   const golpe = raycastEntidades(o, dir, mundo.entidades, ALCANCE_TIRO, e.id);
-  let ate;
+  let ate: Vec3;
   if (golpe && (!parede || golpe.dist <= parede.dist)) {
     aplicarDano(mundo, e, tipo, golpe, eventos);
     ate = golpe.ponto;
@@ -299,7 +308,7 @@ function atirarRaio(mundo, e, tipo, desvio, eventos) {
 }
 
 // Atacante atrás do alvo: o alvo olha para o lado oposto de quem ataca.
-function pelasCostas(atacante, alvo) {
+function pelasCostas(atacante: Entidade, alvo: Entidade): boolean {
   const f = direcao(alvo.yaw, 0);
   const vx = atacante.pos.x - alvo.pos.x;
   const vz = atacante.pos.z - alvo.pos.z;
@@ -308,10 +317,10 @@ function pelasCostas(atacante, alvo) {
 }
 
 // Faca: botão esquerdo = golpe leve, direito = estocada. Corpo a corpo, sem tiro nem rastro.
-function golpearFaca(mundo, e, cmd, arma, eventos) {
+function golpearFaca(mundo: Mundo, e: Entidade, cmd: Comandos, arma: Arma, eventos: Evento[]): void {
   if (!(cmd.atirar || cmd.zoom) || mundo.tempo < arma.prontaEm) return;
   const forte = !cmd.atirar;
-  const g = ARMAS.faca.golpes[forte ? 'forte' : 'leve'];
+  const g = ARMAS.faca.golpes![forte ? 'forte' : 'leve'];
   arma.prontaEm = mundo.tempo + g.intervalo;
   const o = olho(e);
   const dir = direcao(e.yaw, e.pitch);
@@ -323,16 +332,16 @@ function golpearFaca(mundo, e, cmd, arma, eventos) {
   if (noCorpo) aplicarDano(mundo, e, 'faca', alvo, eventos, costas ? g.costas : g.dano);
 }
 
-const ORDEM_SLOTS = ['primaria', 'pistola', 'faca', 'granada'];
+const ORDEM_SLOTS: Slot[] = ['primaria', 'pistola', 'faca', 'granada'];
 
 // O slot existe e dá para sacar? A granada só entra com estoque; sem primária comprada, esse slot some.
-function slotDisponivel(mundo, e, slot) {
+function slotDisponivel(mundo: Mundo, e: Entidade, slot: Slot): boolean {
   if (slot === 'granada') return proximaGranada(granadasDe(mundo, e), null) !== null;
-  return Boolean(e.armas[slot]);
+  return Boolean(e.armas![slot]);
 }
 
 // `slot` do comando: um slot, 'anterior' (Q, a última arma) ou 'roda+'/'roda-' (roda do mouse).
-function slotPedido(mundo, e, slot) {
+function slotPedido(mundo: Mundo, e: Entidade, slot: SlotPedido | null): Slot | null | undefined {
   if (slot === 'anterior') return e.slotAnterior;
   if (slot === 'roda+' || slot === 'roda-') {
     const ordem = ORDEM_SLOTS.filter((s) => s === e.slot || slotDisponivel(mundo, e, s));
@@ -343,35 +352,37 @@ function slotPedido(mundo, e, slot) {
 }
 
 // Troca a arma em mãos: cancela recarga e pino, guarda a anterior e saca a nova.
-function trocarSlot(mundo, e, pedido, eventos) {
-  e.armas[e.slot].recarregandoAte = 0; // trocar de arma cancela a recarga
-  e.armas[e.slot].recuoAcum = 0; // e só a arma em mãos perde o recuo: sem isso a mira pularia ao voltar
-  if (e.slot === 'granada') e.armas.granada.pino = null; // sair da granada com o pino puxado cancela o arremesso
+function trocarSlot(mundo: Mundo, e: Entidade, pedido: Slot, eventos: Evento[]): void {
+  const armas = e.armas!;
+  armas[e.slot]!.recarregandoAte = 0; // trocar de arma cancela a recarga
+  armas[e.slot]!.recuoAcum = 0; // e só a arma em mãos perde o recuo: sem isso a mira pularia ao voltar
+  if (e.slot === 'granada') armas.granada.pino = null; // sair da granada com o pino puxado cancela o arremesso
   e.slotAnterior = e.slot;
   e.slot = pedido;
-  const nova = e.armas[e.slot];
+  const nova = armas[e.slot]!;
   if (pedido === 'granada') {
+    const mao = nova as Mao; // no slot 'granada' a arma sacada é a mão
     const estoque = granadasDe(mundo, e);
-    if (!(estoque[nova.sel] > 0)) nova.sel = proximaGranada(estoque, null); // lembra o último tipo se ainda houver
+    if (!(estoque[mao.sel!] > 0)) mao.sel = proximaGranada(estoque, null); // lembra o último tipo se ainda houver
   }
   nova.prontaEm = Math.max(nova.prontaEm, mundo.tempo + SAQUE[e.slot]); // sacar leva um instante
   eventos.push({ tipo: 'saque', id: e.id, arma: nova.tipo });
 }
 
 // Granada na mão: o 4 de novo cicla o tipo; jogar (ou ficar sem estoque) volta para a arma anterior.
-function combateGranada(mundo, e, cmd, eventos) {
-  const mao = e.armas.granada;
+function combateGranada(mundo: Mundo, e: Entidade, cmd: Comandos, eventos: Evento[]): void {
+  const mao = e.armas!.granada;
   const estoque = granadasDe(mundo, e);
-  if (!mao.pino && !(estoque[mao.sel] > 0)) mao.sel = proximaGranada(estoque, mao.sel);
+  if (!mao.pino && !(estoque[mao.sel!] > 0)) mao.sel = proximaGranada(estoque, mao.sel);
   const jogou = mao.sel !== null && atualizarMao(mundo, e, cmd, eventos);
   if (jogou || (!mao.pino && mao.sel === null)) {
-    const volta = e.slotAnterior !== 'granada' && slotDisponivel(mundo, e, e.slotAnterior) ? e.slotAnterior : 'faca';
+    const volta = e.slotAnterior !== 'granada' && slotDisponivel(mundo, e, e.slotAnterior!) ? e.slotAnterior! : 'faca';
     trocarSlot(mundo, e, volta, eventos);
     e.slotAnterior = 'granada';
   }
 }
 
-function combate(mundo, e, cmd, dt, eventos) {
+function combate(mundo: Mundo, e: Entidade, cmd: Comandos, dt: number, eventos: Evento[]): void {
   if (!e.armas) return;
   const pedido = slotPedido(mundo, e, cmd.slot);
   if (pedido === 'granada' && e.slot === 'granada') {
@@ -380,7 +391,7 @@ function combate(mundo, e, cmd, dt, eventos) {
   } else if (pedido && pedido !== e.slot && slotDisponivel(mundo, e, pedido)) {
     trocarSlot(mundo, e, pedido, eventos);
   }
-  const arma = e.armas[e.slot];
+  const arma = e.armas[e.slot]!;
   const agora = mundo.tempo;
   if (e.slot === 'granada') {
     combateGranada(mundo, e, cmd, eventos); // a pseudo-arma não tem munição: nunca chega ao tiro nem à recarga
@@ -394,12 +405,13 @@ function combate(mundo, e, cmd, dt, eventos) {
   }
   if (cmd.recarregar && iniciarRecarga(arma, agora)) eventos.push({ tipo: 'recarga', atirador: e.id });
   if (podeAtirar(arma, agora, cmd.atirar)) {
-    const estado = {
+    const estado: EstadoTiro = {
       velHoriz: e.velHoriz, velMax: velocidadeDe(arma.tipo), noChao: e.noChao, agachado: e.agachado, zoom: cmd.zoom,
     };
     const desvios = disparar(arma, agora, estado, mundo.rng);
-    eventos.push({ tipo: 'tiro', atirador: e.id, arma: arma.tipo });
-    for (const d of desvios) atirarRaio(mundo, e, arma.tipo, d, eventos);
+    const tipo = arma.tipo as TipoArmaDeFogo; // granada e faca já saíram acima: aqui só arma de fogo
+    eventos.push({ tipo: 'tiro', atirador: e.id, arma: tipo });
+    for (const d of desvios) atirarRaio(mundo, e, tipo, d, eventos);
   }
   const antes = arma.recarregandoAte;
   atualizarArma(arma, agora, dt, cmd.atirar);
@@ -407,9 +419,11 @@ function combate(mundo, e, cmd, dt, eventos) {
 }
 
 // `comBomba` falso (fim do round) congela a C4: ninguém age e o relógio dela para.
-export function passo(mundo, dt, comandos, { congelado = false, comBomba = true } = {}) {
-  const eventos = [];
-  const agindo = new Map();
+export function passo(
+  mundo: Mundo, dt: number, comandos: Map<number, Comandos>, { congelado = false, comBomba = true }: OpcoesPasso = {},
+): Evento[] {
+  const eventos: Evento[] = [];
+  const agindo: Agindo = new Map();
   for (const e of mundo.entidades) {
     if (!e.vivo) continue;
     let cmd = comandos.get(e.id) ?? idle(e);
@@ -421,7 +435,7 @@ export function passo(mundo, dt, comandos, { congelado = false, comBomba = true 
     }
     // Plantar/desarmar, fim do round e congelamento cancelam o pino puxado: nada é lançado.
     if (e.slot === 'granada' && (acao || congelado || !comBomba)) {
-      e.armas.granada.pino = null;
+      e.armas!.granada.pino = null;
       cmd = { ...cmd, atirar: false, zoom: false };
     }
     moverEntidade(e, cmd, dt, mundo.mapa.caixas, congelado, eventos);
@@ -445,8 +459,8 @@ export function passo(mundo, dt, comandos, { congelado = false, comBomba = true 
   return eventos;
 }
 
-export function vivosPorTime(mundo) {
-  const r = { azul: { n: 0, hp: 0 }, laranja: { n: 0, hp: 0 } };
+export function vivosPorTime(mundo: Mundo): Vivos {
+  const r: Vivos = { azul: { n: 0, hp: 0 }, laranja: { n: 0, hp: 0 } };
   for (const e of mundo.entidades) {
     if (!e.vivo) continue;
     r[e.time].n += 1;
