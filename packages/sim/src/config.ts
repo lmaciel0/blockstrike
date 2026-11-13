@@ -1,8 +1,11 @@
-// @ts-nocheck
 /**
  * Block Strike — constantes de jogo (unidades: metros e segundos).
  * Módulo puro: sem Three.js e sem DOM.
  */
+
+import type {
+  Dificuldade, DefArma, IdItem, ItemLoja, NomeDificuldade, ParteCorpo, TipoArma, TipoGranada,
+} from './tipos.js';
 
 export const JOGADOR = {
   raio: 0.35,
@@ -51,7 +54,10 @@ export const GRANADA = {
 };
 
 // Economia (só na partida): preços, recompensas e colete. Valores em dólares.
-export const ECONOMIA = {
+export const ECONOMIA: {
+  inicial: number; maximo: number; vitoria: number; derrota: number[];
+  recompensaKill: Partial<Record<TipoArma, number>>; freezeCompra: number;
+} = {
   inicial: 800, maximo: 16000, vitoria: 3250,
   derrota: [1400, 1900, 2400, 2900, 3400], // bônus de quem perde: sobe a cada derrota seguida
   recompensaKill: { rifle: 300, pistola: 300, sniper: 100, escopeta: 900, faca: 900, smg: 600 },
@@ -59,7 +65,7 @@ export const ECONOMIA = {
 };
 
 // id → { nome, preco, grupo }. `kit` só vale para CT; as granadas têm limite por tipo.
-export const ITENS = {
+export const ITENS: Record<IdItem, ItemLoja> = {
   rifle: { nome: 'Rifle', preco: 2700, grupo: 'arma' },
   fuzil: { nome: 'Fuzil', preco: 3100, grupo: 'arma' },
   rifleS: { nome: 'Rifle-S', preco: 2900, grupo: 'arma' },
@@ -77,14 +83,14 @@ export const ITENS = {
   molotov: { nome: 'Molotov', preco: 400, grupo: 'granada' },
 };
 // Ordem do ciclo das granadas na mão (tecla 4).
-export const ORDEM_GRANADAS = ['he', 'molotov', 'flash', 'smoke'];
-export const MAX_GRANADAS = { smoke: 1, flash: 2, he: 1, molotov: 1 };
+export const ORDEM_GRANADAS: TipoGranada[] = ['he', 'molotov', 'flash', 'smoke'];
+export const MAX_GRANADAS: Record<TipoGranada, number> = { smoke: 1, flash: 2, he: 1, molotov: 1 };
 
 // Colete: o corpo leva `corpo` do dano; o capacete protege a cabeça (`cabeca`). O resto do dano gasta o colete.
 export const COLETE = { pontos: 100, corpo: 0.55, cabeca: 0.6 };
 
 // Multiplicador de dano por parte do corpo atingida.
-export const MULT_PARTE = { cabeca: 4, tronco: 1, pernas: 0.75 };
+export const MULT_PARTE: Record<ParteCorpo, number> = { cabeca: 4, tronco: 1, pernas: 0.75 };
 
 // Campo de visão sem zoom (graus); a luneta usa o `zoomFov` da arma.
 export const FOV_PADRAO = 75;
@@ -96,7 +102,7 @@ export const RECUO_MAX = 0.08;
 // `familia`: variantes contam como a arma base na recompensa do abate e no jeito do bot lutar.
 // `silenciador`: tiro baixo, sem clarão na ponta e ouvido pelos bots só de perto.
 // vel = velocidade correndo (m/s) com a arma na mão: faca > pistola > SMG > escopeta > rifle > sniper.
-export const ARMAS = {
+export const ARMAS: Record<TipoArma, DefArma> = {
   rifle: {
     nome: 'Rifle', slot: 'primaria', vel: 5.1, dano: 36, rpm: 600, pente: 30, reserva: 90,
     recarga: 2.5, auto: true, spreadBase: 0.004, spreadMov: 0.06, recuo: 0.012,
@@ -153,14 +159,14 @@ export const ARMAS = {
 };
 
 // Tipo base da arma (a própria, se não for variante).
-export const familia = (tipo) => ARMAS[tipo]?.familia ?? tipo;
+export const familia = (tipo: TipoArma): TipoArma => ARMAS[tipo]?.familia ?? tipo;
 
 // reacao em segundos; erroMira em radianos; chanceCabeca em [0,1]; alturaTronco em m (ponto de mira no corpo).
-export const DIFICULDADE = {
+export const DIFICULDADE: Record<NomeDificuldade, Dificuldade> = {
   facil: { reacao: 0.6, erroMira: 0.07, chanceCabeca: 0.03, alturaTronco: 0.95 },
   medio: { reacao: 0.38, erroMira: 0.04, chanceCabeca: 0.3 },
   dificil: { reacao: 0.2, erroMira: 0.02, chanceCabeca: 0.45 },
 };
 
 // Exibidos como `Bot <nome>`.
-export const NOMES_BOTS = ['Tijolo', 'Bloco', 'Cubo', 'Pixel', 'Voxel', 'Quina', 'Laje', 'Prisma', 'Viga'];
+export const NOMES_BOTS: string[] = ['Tijolo', 'Bloco', 'Cubo', 'Pixel', 'Voxel', 'Quina', 'Laje', 'Prisma', 'Viga'];

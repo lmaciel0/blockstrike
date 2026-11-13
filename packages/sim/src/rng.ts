@@ -1,9 +1,10 @@
-// @ts-nocheck
 /**
  * RNG determinístico (mulberry32) — mesma seed, mesma sequência.
  */
 
-export function criarRng(seed) {
+import type { Rng } from './tipos.js';
+
+export function criarRng(seed: number): Rng {
   let estado = seed >>> 0;
   return function proximo() {
     estado = (estado + 0x6d2b79f5) >>> 0;

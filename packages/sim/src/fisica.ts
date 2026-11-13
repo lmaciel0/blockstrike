@@ -1,17 +1,22 @@
-// @ts-nocheck
 /**
  * Física do Block Strike — colisão AABB, raycast e hitboxes.
  * Módulo puro: sem Three.js e sem DOM. y é para cima; `pos` fica nos pés.
  */
 
 import { JOGADOR } from './config.js';
+import type {
+  AcertoEntidade, AlvoFisico, Caixa, HitboxParte, ImpactoCaixa, ResultadoMovimento, Vec3,
+} from './tipos.js';
 
 const PASSO_MAX = 0.1;
 const EPS = 1e-9;
-const EIXOS = ['x', 'y', 'z'];
+const EIXOS = ['x', 'y', 'z'] as const;
+type Eixo = (typeof EIXOS)[number];
+// Volume alinhado aos eixos: a `Caixa` do mapa e as hitboxes (que não têm `cor`) servem.
+type Volume = Pick<Caixa, 'min' | 'max'>;
 
 // Encostar (faces iguais) não conta como interseção.
-function sobrepoe(pos, raio, altura, c) {
+function sobrepoe(pos: Vec3, raio: number, altura: number, c: Volume): boolean {
   return (
     pos.x - raio < c.max.x - EPS && pos.x + raio > c.min.x + EPS &&
     pos.y < c.max.y - EPS && pos.y + altura > c.min.y + EPS &&
@@ -21,7 +26,7 @@ function sobrepoe(pos, raio, altura, c) {
 
 // Move `pos` em um único eixo e encosta na face mais restritiva, se houver.
 // Retorna true se foi bloqueado.
-function moverEixo(pos, eixo, d, raio, altura, caixas) {
+function moverEixo(pos: Vec3, eixo: Eixo, d: number, raio: number, altura: number, caixas: Caixa[]): boolean {
   if (d === 0) return false;
   pos[eixo] += d;
   const abaixo = eixo === 'y' ? 0 : raio; // extensão do corpo atrás de pos no eixo
@@ -38,7 +43,9 @@ function moverEixo(pos, eixo, d, raio, altura, caixas) {
   return bloqueou;
 }
 
-export function moverComColisao(pos, desloc, raio, altura, caixas) {
+export function moverComColisao(
+  pos: Vec3, desloc: Vec3, raio: number, altura: number, caixas: Caixa[],
+): ResultadoMovimento {
   const p = { x: pos.x, y: pos.y, z: pos.z };
   const maior = Math.max(Math.abs(desloc.x), Math.abs(desloc.y), Math.abs(desloc.z));
   const passos = Math.max(1, Math.ceil(maior / PASSO_MAX));
@@ -64,10 +71,10 @@ export function moverComColisao(pos, desloc, raio, altura, caixas) {
 }
 
 // Método slab. Retorna a entrada mais próxima de `origem` (ignora origem dentro da caixa).
-function raioContraCaixa(o, d, c) {
+function raioContraCaixa(o: Vec3, d: Vec3, c: Volume): { t: number; eixo: Eixo } | null {
   let tmin = -Infinity;
   let tmax = Infinity;
-  let eixoEntrada = null;
+  let eixoEntrada: Eixo | null = null;
   for (const eixo of EIXOS) {
     if (d[eixo] === 0) {
       if (o[eixo] < c.min[eixo] || o[eixo] > c.max[eixo]) return null;
@@ -87,8 +94,8 @@ function raioContraCaixa(o, d, c) {
   return { t: tmin, eixo: eixoEntrada };
 }
 
-export function raycastCaixas(origem, dir, caixas, maxDist) {
-  let melhor = null;
+export function raycastCaixas(origem: Vec3, dir: Vec3, caixas: Caixa[], maxDist: number): ImpactoCaixa | null {
+  let melhor: { t: number; eixo: Eixo } | null = null;
   for (const c of caixas) {
     const r = raioContraCaixa(origem, dir, c);
     if (!r || r.t > maxDist) continue;
@@ -112,10 +119,10 @@ const LARGURA_CORPO = 0.25; // meia-largura de pernas e tronco
 const LARGURA_CABECA = 0.2;
 const ESCALA_AGACHADO = 1.2 / 1.8;
 
-export function hitboxes(ent) {
+export function hitboxes(ent: Pick<AlvoFisico, 'pos' | 'agachado'>): HitboxParte[] {
   const k = ent.agachado ? ESCALA_AGACHADO : 1;
   const { x, y, z } = ent.pos;
-  const caixa = (parte, y0, y1, meia) => ({
+  const caixa = (parte: HitboxParte['parte'], y0: number, y1: number, meia: number): HitboxParte => ({
     parte,
     min: { x: x - meia, y: y + y0 * k, z: z - meia },
     max: { x: x + meia, y: y + y1 * k, z: z + meia },
@@ -127,8 +134,10 @@ export function hitboxes(ent) {
   ];
 }
 
-export function raycastEntidades(origem, dir, entidades, maxDist, ignorarId) {
-  let melhor = null;
+export function raycastEntidades<E extends AlvoFisico>(
+  origem: Vec3, dir: Vec3, entidades: E[], maxDist: number, ignorarId: number | null | undefined,
+): AcertoEntidade<E> | null {
+  let melhor: AcertoEntidade<E> | null = null;
   for (const ent of entidades) {
     if (!ent.vivo || ent.id === ignorarId) continue;
     for (const hb of hitboxes(ent)) {
@@ -151,7 +160,7 @@ export function raycastEntidades(origem, dir, entidades, maxDist, ignorarId) {
   return melhor;
 }
 
-export function temVisada(a, b, caixas) {
+export function temVisada(a: Vec3, b: Vec3, caixas: Caixa[]): boolean {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const dz = b.z - a.z;
@@ -162,13 +171,13 @@ export function temVisada(a, b, caixas) {
 }
 
 // Posição do olho (câmera / origem dos tiros).
-export function olho(ent) {
+export function olho(ent: Pick<AlvoFisico, 'pos' | 'agachado'>): Vec3 {
   const h = ent.agachado ? JOGADOR.olhoAgachado : JOGADOR.olho;
   return { x: ent.pos.x, y: ent.pos.y + h, z: ent.pos.z };
 }
 
 // Vetor unitário de visada. yaw 0 olha para -z; yaw positivo vira à esquerda.
-export function direcao(yaw, pitch) {
+export function direcao(yaw: number, pitch: number): Vec3 {
   const c = Math.cos(pitch);
   return { x: -Math.sin(yaw) * c, y: Math.sin(pitch), z: -Math.cos(yaw) * c };
 }

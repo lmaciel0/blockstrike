@@ -84,6 +84,50 @@ export interface Equip {
   granadas: Record<TipoGranada, number>;
 }
 
+/** Golpe da faca (`ARMAS.faca.golpes`): `costas` é o dano pelas costas do alvo. */
+export interface GolpeFaca { dano: number; costas: number; intervalo: number; alcance: number }
+
+/**
+ * Entrada de `ARMAS` (config.ts). `familia`: variante conta como a arma base; `silenciador`: tiro baixo;
+ * `zoomFov`/`spreadSemZoom` só no sniper; `chumbos` só na escopeta; `alcance`/`golpes` só na faca.
+ */
+export interface DefArma {
+  nome: string;
+  slot: Slot;
+  familia?: TipoArma;
+  silenciador?: boolean;
+  vel: number;
+  dano: number;
+  rpm: number;
+  pente: number;
+  reserva: number;
+  recarga: number;
+  auto: boolean;
+  spreadBase: number;
+  spreadMov: number;
+  recuo: number;
+  zoomFov?: number;
+  spreadSemZoom?: number;
+  chumbos?: number;
+  alcance?: number;
+  golpes?: { leve: GolpeFaca; forte: GolpeFaca };
+}
+
+/** Estado de movimento que `calcularSpread` e `disparar` (armas.ts) leem. */
+export interface EstadoTiro { velHoriz: number; velMax: number; noChao: boolean; agachado: boolean; zoom: boolean }
+
+/** Opções de `velocidadeDe` (armas.ts); todas opcionais, padrão false. */
+export interface OpcoesVelocidade { agachado?: boolean; devagar?: boolean; zoom?: boolean }
+
+/** Desvio angular (rad) de um projétil em relação à mira (`disparar`, armas.ts). */
+export interface Desvio { dx: number; dy: number }
+
+export type GrupoItem = 'arma' | 'equip' | 'granada';
+/** Chaves de `ITENS` (config.ts). */
+export type IdItem = TipoPrimaria | 'colete' | 'coleteCapacete' | 'kit' | TipoGranada;
+/** Entrada de `ITENS` (config.ts). */
+export interface ItemLoja { nome: string; preco: number; grupo: GrupoItem }
+
 // ---------- Entidade, comandos e cérebro ----------
 
 /**
@@ -244,6 +288,23 @@ export interface Partida {
 
 /** Bloco do mapa (`caixa` em mapa.ts). `cor` é só para o desenho. */
 export interface Caixa { min: Vec3; max: Vec3; cor: number | string }
+
+// ---------- Física ----------
+
+/** O que a física lê de uma entidade (hitboxes, raycast e olho); `Entidade` já satisfaz. */
+export type AlvoFisico = Pick<Entidade, 'id' | 'pos' | 'agachado' | 'vivo'>;
+
+/** Hitbox de uma parte do corpo (`hitboxes`, fisica.ts). */
+export interface HitboxParte { parte: ParteCorpo; min: Vec3; max: Vec3 }
+
+/** Acerto de `raycastCaixas`: `normal` aponta contra o raio (um eixo vale -1 ou 1). */
+export interface ImpactoCaixa { dist: number; ponto: Vec3; normal: Vec3 }
+
+/** Acerto de `raycastEntidades`. */
+export interface AcertoEntidade<E extends AlvoFisico = Entidade> { ent: E; parte: ParteCorpo; dist: number; ponto: Vec3 }
+
+/** Resultado de `moverComColisao`. */
+export interface ResultadoMovimento { pos: Vec3; noChao: boolean; bateuTeto: boolean }
 
 /** Nó do grafo de navegação; `id` é o índice em `mapa.waypoints`. `cobertura` só existe nos que são. */
 export interface Waypoint { id: number; x: number; z: number; cobertura?: boolean }
