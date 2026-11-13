@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Block Strike — regras de round e partida (MR12: vence quem chegar a 13).
  * Módulo puro: recebe os vivos de cada time e devolve os eventos da fase.
@@ -6,16 +5,17 @@
  */
 
 import { ROUND } from './config.js';
+import type { EstadoBomba, EventoPartida, Lado, MotivoFimRound, OpcoesPartida, Partida, Time, Vivos } from './tipos.js';
 
 const DT_MAX = 0.05;
 
 // Quem planta a C4: laranja na primeira metade e azul depois da troca de lados.
-export function terroristasDe(round) {
+export function terroristasDe(round: number): Time {
   return round <= ROUND.trocaLados ? 'laranja' : 'azul';
 }
 
 // `freeze`: duração (s) da contagem antes de cada round; a partida com economia usa uma maior para dar tempo de comprar.
-export function criarPartida({ freeze = ROUND.freeze } = {}) {
+export function criarPartida({ freeze = ROUND.freeze }: Partial<OpcoesPartida> = {}): Partida {
   return {
     freeze,
     derrotasSeguidas: { azul: 0, laranja: 0 },
@@ -31,19 +31,19 @@ export function criarPartida({ freeze = ROUND.freeze } = {}) {
 }
 
 // Lado da base do time azul: troca depois do round `trocaLados`.
-export function ladoAzul(round) {
+export function ladoAzul(round: number): Lado {
   return round <= ROUND.trocaLados ? 'A' : 'B';
 }
 
 // Fim por tempo: mais vivos, depois mais HP somado; igual em tudo, ninguém.
-export function vencedorPorTempo(vivos) {
+export function vencedorPorTempo(vivos: Vivos): Time | null {
   const { azul, laranja } = vivos;
   if (azul.n !== laranja.n) return azul.n > laranja.n ? 'azul' : 'laranja';
   if (azul.hp !== laranja.hp) return azul.hp > laranja.hp ? 'azul' : 'laranja';
   return null;
 }
 
-function encerrarRound(p, vencedor, motivo) {
+function encerrarRound(p: Partida, vencedor: Time | null, motivo: MotivoFimRound): EventoPartida[] {
   if (vencedor) p.placar[vencedor] += 1;
   p.vencedorRound = vencedor;
   p.motivo = motivo;
@@ -52,14 +52,14 @@ function encerrarRound(p, vencedor, motivo) {
   return ['fim-round'];
 }
 
-function resultadoFinal(placar) {
+function resultadoFinal(placar: Partida['placar']): Time | 'empate' {
   if (placar.azul === placar.laranja) return 'empate';
   return placar.azul > placar.laranja ? 'azul' : 'laranja';
 }
 
 // Round com C4 (`bomba` = { plantada, explodiu, desarmada }): terroristas vencem plantando e explodindo
 // (ou eliminando os CTs); CTs vencem eliminando os Ts sem plantio, desarmando ou esgotando o tempo.
-function tickJogoBomba(p, passo, vivos, bomba) {
+function tickJogoBomba(p: Partida, passo: number, vivos: Vivos, bomba: EstadoBomba): EventoPartida[] {
   const t = p.terroristas;
   const ct = t === 'azul' ? 'laranja' : 'azul';
   if (bomba.explodiu) return encerrarRound(p, t, 'bomba-explodiu');
@@ -72,7 +72,7 @@ function tickJogoBomba(p, passo, vivos, bomba) {
   return [];
 }
 
-export function tickPartida(p, dt, vivos, bomba) {
+export function tickPartida(p: Partida, dt: number, vivos: Vivos, bomba?: EstadoBomba | null): EventoPartida[] {
   const passo = Math.min(dt, DT_MAX);
   if (p.fase === 'freeze') {
     p.tempo -= passo;

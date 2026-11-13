@@ -128,6 +128,19 @@ export type IdItem = TipoPrimaria | 'colete' | 'coleteCapacete' | 'kit' | TipoGr
 /** Entrada de `ITENS` (config.ts). */
 export interface ItemLoja { nome: string; preco: number; grupo: GrupoItem }
 
+/** Papel do time no round para a loja: CT defende (só ele compra kit), T planta a C4. */
+export type Papel = 'CT' | 'T';
+/** Por que `motivoNaoComprar` (economia.ts) recusa o item. */
+export type MotivoCompra = 'inexistente' | 'ja-tem' | 'papel' | 'dinheiro';
+/** `comprar` (economia.ts): `motivo` só existe na recusa, `item` só na compra. */
+export type ResultadoCompra =
+  | { ok: false; motivo: MotivoCompra; item?: undefined }
+  | { ok: true; item: IdItem; motivo?: undefined };
+/** `danoComColete` (economia.ts): dano que passa e pontos de colete que sobram. */
+export interface DanoComColete { dano: number; colete: number }
+/** Item do menu de compra (`estadoCompra`, economia.ts); `motivo` null = dá para comprar. */
+export interface ItemCompra extends ItemLoja { id: IdItem; motivo: MotivoCompra | null }
+
 // ---------- Entidade, comandos e cérebro ----------
 
 /**
@@ -249,6 +262,9 @@ export type TipoAcaoBomba = 'plantar' | 'desarmar';
 /** Plantio ou desarme em andamento: `t` segundos de `dur`. */
 export interface AcaoBomba { tipo: TipoAcaoBomba; id: number; t: number; dur: number }
 
+/** `agindo` de `tickBomba`: id da entidade que segura a tecla de uso → ação que ela faz. */
+export type Agindo = Map<number, TipoAcaoBomba>;
+
 /** `criarBomba` (bomba.ts). `pos` existe com a C4 solta no chão ou plantada; no portador é null. */
 export interface Bomba {
   terroristas: Time;
@@ -269,6 +285,17 @@ export type FasePartida = 'freeze' | 'jogo' | 'fim-round' | 'fim-partida';
 export type MotivoFimRound = 'eliminacao' | 'tempo' | 'bomba-explodiu' | 'bomba-desarmada';
 /** Nomes que `tickPartida` devolve (strings soltas, não objetos `Evento`). */
 export type EventoPartida = 'inicio-round' | 'fim-round' | 'novo-round' | 'troca-lados' | 'fim-partida';
+
+/** Opções de `criarPartida` (rounds.ts): `freeze` em segundos. */
+export interface OpcoesPartida { freeze: number }
+
+/** Vivos de um time para `tickPartida`: quantos e o HP somado. */
+export interface VivosTime { n: number; hp: number }
+/** O que `tickPartida` e `vencedorPorTempo` (rounds.ts) leem de cada time. */
+export type Vivos = Record<Time, VivosTime>;
+
+/** O que `tickPartida` lê da C4: `Bomba` já satisfaz. */
+export type EstadoBomba = Pick<Bomba, 'plantada' | 'explodiu' | 'desarmada'>;
 
 /** `criarPartida` (rounds.ts). `vencedorRound`: undefined = round em aberto; null = round sem vencedor. */
 export interface Partida {
@@ -308,6 +335,12 @@ export interface ResultadoMovimento { pos: Vec3; noChao: boolean; bateuTeto: boo
 
 /** Nó do grafo de navegação; `id` é o índice em `mapa.waypoints`. `cobertura` só existe nos que são. */
 export interface Waypoint { id: number; x: number; z: number; cobertura?: boolean }
+
+/** Aresta de saída de um nó do `Grafo`: `custo` é a distância em xz. */
+export interface Vizinho { id: number; custo: number }
+
+/** `criarGrafo` (navegacao.ts): `nos` são os waypoints (índice === id); `vizinhos[id]` as arestas, nos dois sentidos. */
+export interface Grafo { nos: Waypoint[]; vizinhos: Vizinho[][] }
 
 /** Bombsite: retângulo no chão e os waypoints ligados a ele ([metade z>0, metade z<0] em `espera` e `mira`). */
 export interface Bombsite {

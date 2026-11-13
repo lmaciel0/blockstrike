@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Block Strike — C4 do modo desarme: sorteio do portador, plantar, desarmar, explodir e soltar ao morrer.
  * Módulo puro: sem Three.js e sem DOM. Unidades em metros e segundos.
@@ -7,19 +6,20 @@
  */
 
 import { BOMBA } from './config.js';
+import type { Agindo, Bomba, Entidade, Evento, Mapa, Mundo, PontoXZ, Site, Time, TipoAcaoBomba } from './tipos.js';
 
-const distXZ = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+const distXZ = (a: PontoXZ, b: PontoXZ): number => Math.hypot(a.x - b.x, a.z - b.z);
 
 // 'A' | 'B' se o ponto está dentro de um bombsite; senão null.
-export function siteEm(mapa, pos) {
-  for (const [nome, s] of Object.entries(mapa.bombsites ?? {})) {
-    if (pos.x >= s.min.x && pos.x <= s.max.x && pos.z >= s.min.z && pos.z <= s.max.z) return nome;
+export function siteEm(mapa: Mapa, pos: PontoXZ): Site | null {
+  for (const [nome, s] of Object.entries<Mapa['bombsites'][Site]>(mapa.bombsites ?? {})) {
+    if (pos.x >= s.min.x && pos.x <= s.max.x && pos.z >= s.min.z && pos.z <= s.max.z) return nome as Site;
   }
   return null;
 }
 
 // C4 nova para o round: portador sorteado entre os terroristas vivos e o bombsite preferido deles.
-export function criarBomba(mundo, terroristas) {
+export function criarBomba(mundo: Mundo, terroristas: Time): Bomba {
   const ts = mundo.entidades.filter((e) => e.time === terroristas && e.vivo);
   const portador = ts[Math.floor(mundo.rng() * ts.length)] ?? null;
   return {
@@ -32,20 +32,20 @@ export function criarBomba(mundo, terroristas) {
 }
 
 // Ação que `e` poderia fazer agora com a tecla de uso: 'plantar', 'desarmar' ou null.
-export function acaoPossivel(mundo, e) {
+export function acaoPossivel(mundo: Mundo, e: Entidade): TipoAcaoBomba | null {
   const b = mundo.bomba;
   if (!b || !e.vivo || b.explodiu || b.desarmada) return null;
   if (e.time === b.terroristas) {
     return !b.plantada && b.portador === e.id && e.noChao && siteEm(mundo.mapa, e.pos) ? 'plantar' : null;
   }
-  return b.plantada && e.noChao && distXZ(e.pos, b.pos) <= BOMBA.raioAcao ? 'desarmar' : null;
+  return b.plantada && e.noChao && distXZ(e.pos, b.pos!) <= BOMBA.raioAcao ? 'desarmar' : null;
 }
 
-function matarNaExplosao(mundo, eventos) {
-  const b = mundo.bomba;
+function matarNaExplosao(mundo: Mundo, eventos: Evento[]): void {
+  const b = mundo.bomba!;
   for (const e of mundo.entidades) {
     if (!e.vivo || e.hp <= 0) continue;
-    if (Math.hypot(e.pos.x - b.pos.x, e.pos.y - b.pos.y, e.pos.z - b.pos.z) > BOMBA.raioExplosao) continue;
+    if (Math.hypot(e.pos.x - b.pos!.x, e.pos.y - b.pos!.y, e.pos.z - b.pos!.z) > BOMBA.raioExplosao) continue;
     e.hp = 0;
     e.mortes += 1;
     eventos.push({ tipo: 'morte', vitima: e.id, assassino: null, arma: 'c4', cabeca: false });
@@ -54,7 +54,7 @@ function matarNaExplosao(mundo, eventos) {
 
 // Um passo da C4. `agindo`: Map id → 'plantar' | 'desarmar' de quem está segurando a tecla de uso.
 // Chamado depois de todos agirem e antes de `vivo` cair (a explosão mata e a queda acontece no fim do passo).
-export function tickBomba(mundo, dt, agindo, eventos) {
+export function tickBomba(mundo: Mundo, dt: number, agindo: Agindo, eventos: Evento[]): void {
   const b = mundo.bomba;
   if (!b || b.explodiu || b.desarmada) return;
   // Portador morto solta a C4 onde caiu; qualquer terrorista vivo que passe por cima a pega.
@@ -66,7 +66,7 @@ export function tickBomba(mundo, dt, agindo, eventos) {
   }
   if (!b.plantada && b.portador === null && b.pos) {
     const pega = mundo.entidades.find((e) => e.vivo && e.time === b.terroristas && e.hp > 0 &&
-      Math.hypot(e.pos.x - b.pos.x, e.pos.z - b.pos.z) <= BOMBA.raioPegar && e.noChao);
+      Math.hypot(e.pos.x - b.pos!.x, e.pos.z - b.pos!.z) <= BOMBA.raioPegar && e.noChao);
     if (pega) {
       b.portador = pega.id;
       b.pos = null;
@@ -114,7 +114,7 @@ export function tickBomba(mundo, dt, agindo, eventos) {
     if (b.restante <= 0) {
       b.explodiu = true;
       b.restante = 0;
-      eventos.push({ tipo: 'explosao', ponto: { ...b.pos } });
+      eventos.push({ tipo: 'explosao', ponto: { ...b.pos! } });
       matarNaExplosao(mundo, eventos);
     }
   }
