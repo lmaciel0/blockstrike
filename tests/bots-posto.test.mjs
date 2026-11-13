@@ -1,0 +1,138 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mod } from './_repo.mjs';
+
+const { criarMundo, posicionarParaRound, passo } = await mod('js/games/blockstrike/mundo.js');
+const { criarBomba } = await mod('js/games/blockstrike/bomba.js');
+const { pensar, criarCerebro } = await mod('js/games/blockstrike/bots.js');
+const { criarGrafo } = await mod('js/games/blockstrike/navegacao.js');
+const { temVisada } = await mod('js/games/blockstrike/fisica.js');
+const { MAPA } = await mod('js/games/blockstrike/mapa.js');
+const { criarRng } = await mod('js/games/blockstrike/rng.js');
+
+function cenario(seed = 3) {
+  const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(seed) });
+  mundo.entidades[0].bot = true; // o "jogador" também é um bot na simulação
+  posicionarParaRound(mundo, 'A');
+  const grafo = criarGrafo(MAPA.waypoints, MAPA.arestas);
+  const rng = criarRng(seed * 31);
+  mundo.bomba = criarBomba(mundo, 'laranja');
+  for (const e of mundo.entidades) e.cerebro = criarCerebro(e, grafo, rng, MAPA.caixas, mundo);
+  return { mundo, grafo, rng };
+}
+const matar = (mundo, time) => {
+  for (const e of mundo.entidades) if (e.time === time) { e.vivo = false; e.hp = 0; }
+};
+// `fora`: ids vivos que não pensam (ficam parados onde o teste os pôs).
+function rodar({ mundo, grafo, rng }, seg, { parar = () => false, fora = [] } = {}) {
+  const eventos = [];
+  for (let i = 0; i < seg / 0.05 && !parar(); i++) {
+    const cmds = new Map();
+    for (const e of mundo.entidades) {
+      if (e.vivo && !fora.includes(e.id)) cmds.set(e.id, pensar(e, mundo, grafo, 'medio', 0.05, rng));
+    }
+    eventos.push(...passo(mundo, 0.05, cmds));
+  }
+  return eventos;
+}
+
+const yawPara = (d, p) => Math.atan2(-(p.x - d.x), -(p.z - d.z));
+const angulo = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+const siteDe = (e) => (e.id % 2 === 0 ? 'A' : 'B');
+const esperaDe = (e) => MAPA.waypoints[MAPA.bombsites[siteDe(e)].espera[0]];
+const miraDe = (e) => MAPA.bombsites[siteDe(e)].mira[0];
+const cts = (mundo) => mundo.entidades.filter((e) => e.time === 'azul' && e.vivo);
+
+// CTs no posto, sem nenhum T vivo.
+function noPosto(seed = 3) {
+  const c = cenario(seed);
+  matar(c.mundo, 'laranja');
+  rodar(c, 30);
+  return c;
+}
+
+// Revive um T parado no ponto pedido (fora do `pensar`).
+function reviverT(mundo, pos) {
+  const t = mundo.entidades.find((e) => e.time === 'laranja');
+  Object.assign(t, { vivo: true, hp: 100, pos: { x: pos.x, y: 0, z: pos.z }, velY: 0, velHoriz: 0 });
+  return t;
+}
+
+test('os pontos de mira têm visada do posto', () => {
+  for (const nome of ['A', 'B']) {
+    const s = MAPA.bombsites[nome];
+    for (const casa of [0, 1]) {
+      const w = MAPA.waypoints[s.espera[casa]];
+      assert.ok(temVisada({ x: w.x, y: 1.6, z: w.z }, { ...s.mira[casa], y: 1.6 }, MAPA.caixas), `${nome}[${casa}] sem visada`);
+    }
+  }
+});
+
+test('CT chega ao posto e mira a entrada', () => {
+  for (const seed of [3, 4, 5, 6]) {
+    const { mundo } = noPosto(seed);
+    for (const e of cts(mundo)) {
+      const tag = `seed ${seed}, bot ${e.id}`;
+      assert.equal(e.cerebro.estado, 'posto', `${tag}: estado ${e.cerebro.estado}`);
+      assert.ok(dist(e.pos, esperaDe(e)) < 1.5, `${tag}: a ${dist(e.pos, esperaDe(e)).toFixed(2)} m do posto`);
+      const erro = Math.abs(angulo(e.yaw - yawPara(e.pos, miraDe(e))));
+      assert.ok(erro < 0.3, `${tag}: mira fora da entrada (${erro.toFixed(2)} rad)`);
+    }
+  }
+});
+
+test('CT no posto atira do lugar sem avançar', () => {
+  const c = noPosto(3);
+  const t = reviverT(c.mundo, { x: 28, z: -19.5 });
+  const ctsB = cts(c.mundo).filter((e) => siteDe(e) === 'B');
+  const antes = new Map(ctsB.map((e) => [e.id, { ...e.pos }]));
+  const ev = rodar(c, 3, { fora: [t.id] });
+  for (const e of ctsB) {
+    assert.ok(dist(e.pos, antes.get(e.id)) < 0.5, `bot ${e.id} andou ${dist(e.pos, antes.get(e.id)).toFixed(2)} m`);
+  }
+  assert.ok(ev.some((x) => x.tipo === 'tiro' && ctsB.some((e) => e.id === x.atirador)), 'nenhum CT do B atirou');
+});
+
+test('C4 plantada tira o CT do posto', () => {
+  const c = noPosto(3);
+  const b = c.mundo.bomba;
+  const centro = MAPA.bombsites.A.centro;
+  Object.assign(b, { plantada: true, portador: null, site: 'A', pos: { x: centro.x, y: 0, z: centro.z }, restante: 40 });
+  const ctB = cts(c.mundo).find((e) => siteDe(e) === 'B');
+  const antes = dist(ctB.pos, b.pos);
+  rodar(c, 15);
+  assert.notEqual(ctB.cerebro.estado, 'posto');
+  assert.ok(antes - dist(ctB.pos, b.pos) >= 10, `aproximou só ${(antes - dist(ctB.pos, b.pos)).toFixed(1)} m`);
+});
+
+test('tiro de quem não vê manda para a cobertura e depois de volta ao posto', () => {
+  const c = noPosto(3);
+  const t = reviverT(c.mundo, { x: 0, z: -26 }); // na base T, atrás da barreira
+  const ct = cts(c.mundo).find((e) => siteDe(e) === 'B');
+  ct.cerebro.ultimoDanoDe = t.id;
+  pensar(ct, c.mundo, c.grafo, 'medio', 0.05, c.rng);
+  assert.equal(ct.cerebro.estado, 'cobertura');
+  rodar(c, 15, { fora: [t.id] });
+  assert.equal(ct.cerebro.estado, 'posto');
+  assert.ok(dist(ct.pos, esperaDe(ct)) < 1.5, `a ${dist(ct.pos, esperaDe(ct)).toFixed(2)} m do posto`);
+});
+
+// Na troca de lados (round 13), o cérebro novo era montado lendo o `casaZ` do cérebro do round anterior,
+// da outra metade do mapa: o CT ia para o `espera` errado e nunca entrava no posto.
+test('cérebro novo usa a metade de onde o bot nasceu, não a do round anterior', () => {
+  for (const seed of [3, 4, 5]) {
+    const c = cenario(seed);
+    matar(c.mundo, 'laranja');
+    for (const e of cts(c.mundo)) {
+      e.cerebro = { ...e.cerebro, casaZ: 1 }; // sobra do round anterior, quando nasceu em z < 0
+      e.cerebro = criarCerebro(e, c.grafo, c.rng, MAPA.caixas, c.mundo);
+    }
+    rodar(c, 30);
+    for (const e of cts(c.mundo)) {
+      const tag = `seed ${seed}, bot ${e.id}`;
+      assert.equal(e.cerebro.estado, 'posto', `${tag}: estado ${e.cerebro.estado}`);
+      assert.ok(dist(e.pos, esperaDe(e)) < 1.5, `${tag}: a ${dist(e.pos, esperaDe(e)).toFixed(2)} m do posto`);
+    }
+  }
+});
