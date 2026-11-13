@@ -4,6 +4,14 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@blockstrike/sim": "*"
+    "@blockstrike/sim": "*",
+    "three": "0.169.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.169.0",
+    "jsdom": "31.0.1"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
   }
 }

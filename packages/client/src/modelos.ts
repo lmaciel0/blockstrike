@@ -3,9 +3,22 @@
  * e o menu desenha as miniaturas do loadout a partir das mesmas caixas.
  */
 
+import type { TipoArmaDeFogo } from '@blockstrike/sim';
+
+/** Caixa de arma: [largura, altura, profundidade, x, y, z, madeira?]; `1` no fim marca madeira. */
+export type CaixaArma = readonly [number, number, number, number, number, number, number?];
+
+export interface ModeloArma {
+  caixas: readonly CaixaArma[];
+  /** z do cano (ponto do clarão). */
+  boca: number;
+  /** Índice da caixa que é o pente (some e volta na recarga); sem pente, ausente. */
+  pente?: number;
+}
+
 // Armas em primeira pessoa: [largura, altura, profundidade, x, y, z, madeira?] no espaço da câmera.
 // A primeira caixa é o corpo (define a altura do clarão); `boca` é o z do cano.
-export const MODELOS_ARMA = {
+export const MODELOS_ARMA: Record<TipoArmaDeFogo | 'faca', ModeloArma> = {
   rifle: {
     caixas: [[0.07, 0.09, 0.5, 0, 0, -0.1], [0.03, 0.03, 0.25, 0, 0.01, -0.5], [0.06, 0.16, 0.06, 0, -0.12, 0.02, 1], [0.07, 0.1, 0.2, 0, -0.02, 0.28, 1]],
     boca: -0.68,

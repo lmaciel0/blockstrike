@@ -3,30 +3,42 @@
  * Módulo puro: conta a partir dos eventos de `passo` (mundo.js) e resume para o painel do menu.
  */
 
-const CAMPOS = ['partidas', 'vitorias', 'derrotas', 'empates', 'kills', 'mortes', 'assists', 'headshots', 'tiros', 'acertos', 'mvps'];
+import type { Evento } from '@blockstrike/sim';
 
-export function novaCarreira() {
-  const c = { armas: {} };
+const CAMPOS = [
+  'partidas', 'vitorias', 'derrotas', 'empates', 'kills', 'mortes', 'assists', 'headshots', 'tiros', 'acertos', 'mvps',
+] as const;
+
+type Campo = (typeof CAMPOS)[number];
+
+/** Contadores da carreira, mais as mortes por arma (`armas`). */
+export type Carreira = Record<Campo, number> & { armas: Record<string, number> };
+
+export type Resultado = 'azul' | 'laranja' | 'empate';
+
+export function novaCarreira(): Carreira {
+  const c = { armas: {} } as Carreira;
   for (const k of CAMPOS) c[k] = 0;
   return c;
 }
 
 // Objeto salvo no storage, validado: campo estranho volta a zero.
-export function lerCarreira(bruto) {
+export function lerCarreira(bruto: unknown): Carreira {
   const c = novaCarreira();
   if (!bruto || typeof bruto !== 'object') return c;
-  const contagem = (v) => (Number.isInteger(v) && v >= 0 ? v : 0);
-  for (const k of CAMPOS) c[k] = contagem(bruto[k]);
-  if (bruto.armas && typeof bruto.armas === 'object') {
-    for (const [tipo, n] of Object.entries(bruto.armas)) if (contagem(n) > 0) c.armas[tipo] = n;
+  const b = bruto as Record<string, unknown>;
+  const contagem = (v: unknown): number => (typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : 0);
+  for (const k of CAMPOS) c[k] = contagem(b[k]);
+  if (b.armas && typeof b.armas === 'object') {
+    for (const [tipo, n] of Object.entries(b.armas)) if (contagem(n) > 0) c.armas[tipo] = contagem(n);
   }
   return c;
 }
 
 // Eventos de um passo. Precisão por disparo: o tiro conta como acerto se algum chumbo pegou
 // (a escopeta não passa de 100%). Só vale acerto da mesma arma do tiro: granada no mesmo passo não entra.
-export function contarEventos(c, eventos, id) {
-  let tiroAberto = null; // arma do disparo ainda sem acerto
+export function contarEventos(c: Carreira, eventos: readonly Evento[], id: number): void {
+  let tiroAberto: string | null = null; // arma do disparo ainda sem acerto
   for (const ev of eventos) {
     if (ev.tipo === 'tiro' && ev.atirador === id) {
       c.tiros += 1;
@@ -47,17 +59,17 @@ export function contarEventos(c, eventos, id) {
 }
 
 // `resultado`: 'azul' | 'laranja' | 'empate'; o jogador é sempre do azul.
-export function contarPartida(c, resultado) {
+export function contarPartida(c: Carreira, resultado: Resultado): void {
   c.partidas += 1;
   if (resultado === 'azul') c.vitorias += 1;
   else if (resultado === 'laranja') c.derrotas += 1;
   else c.empates += 1;
 }
 
-const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : 0);
+const pct = (a: number, b: number): number => (b > 0 ? Math.round((a / b) * 100) : 0);
 
 // Números prontos para o painel; `armasFav`: até 3 armas com mais abates.
-export function resumoCarreira(c) {
+export function resumoCarreira(c: Carreira) {
   return {
     partidas: c.partidas, vitorias: c.vitorias, derrotas: c.derrotas, empates: c.empates,
     taxaVitoria: pct(c.vitorias, c.partidas),

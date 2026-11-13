@@ -5,49 +5,48 @@
  * `data-fase` na raiz reflete a fase: menu, freeze, jogo, fim-round ou fim-partida.
  */
 
-import { MAPA } from '../../sim/src/mapa.js';
-import { criarMundo, posicionarParaRound, passo, vivosPorTime, relatorioDano, registrarMvp } from '../../sim/src/mundo.js';
-import { criarEntrada } from './entrada.js';
-import { criarRng } from '../../sim/src/rng.js';
-import { criarSons } from './sons.js';
-import { ARMAS, DIFICULDADE, ECONOMIA, FOV_PADRAO, familia } from '../../sim/src/config.js';
-import { olho, direcao } from '../../sim/src/fisica.js';
-import { visadaLivre, granadasDe } from '../../sim/src/granadas.js';
-import { criarArma, calcularSpread, velocidadeDe } from '../../sim/src/armas.js';
-import { criarHud } from './hud.js';
-import { lerMira } from './mira.js';
-import { contarEventos, contarPartida, lerCarreira, novaCarreira, resumoCarreira } from './carreira.js';
-import { criarGrafo } from '../../sim/src/navegacao.js';
-import { criarCerebro, pensar } from '../../sim/src/bots.js';
-import { criarPartida, ladoAzul, tickPartida } from '../../sim/src/rounds.js';
-import { criarBomba, acaoPossivel } from '../../sim/src/bomba.js';
 import {
-  iniciarEconomia, resetarEconomia, premiarRound, botComprar, comprar, estadoCompra,
-} from '../../sim/src/economia.js';
+  MAPA, criarMundo, posicionarParaRound, passo, vivosPorTime, relatorioDano, registrarMvp, criarRng, ARMAS,
+  DIFICULDADE, ECONOMIA, FOV_PADRAO, familia, olho, direcao, visadaLivre, granadasDe, criarArma,
+  calcularSpread, velocidadeDe, criarGrafo, criarCerebro, pensar, criarPartida, ladoAzul, tickPartida,
+  criarBomba, acaoPossivel, iniciarEconomia, resetarEconomia, premiarRound, botComprar, comprar,
+  estadoCompra,
+} from '@blockstrike/sim';
+import { criarEntrada } from './entrada';
+import { criarSons } from './sons';
+import { criarHud } from './hud';
+import { lerMira } from './mira';
+import { contarEventos, contarPartida, lerCarreira, novaCarreira, resumoCarreira } from './carreira';
+import type {
+  Entidade, Evento, EventoPartida, Grafo, IdItem, Mao, Mundo, NomeDificuldade, Partida, Rng, Site, Time, TipoArma, TipoPrimaria, Vec3, Comandos, Slot,
+} from '@blockstrike/sim';
+import type { Portas, StoragePort } from './portas';
+import type { ConfigJogo, EstadoBombaHud, ModoJogo, TamanhoPalco, VistaHud } from './hud';
+import type { Entrada } from './entrada';
 
 const DT_MAX = 0.05;
 const FOGO_AVISO = 0.5; // s entre hitmarkers/dor do mesmo par atacante→vítima no fogo
 const AVISTAR_A_CADA = 0.25; // s entre recálculos dos inimigos avistados (radar)
 const ALCANCE_AVISTAR = 50;
-const MODOS = ['partida', 'treino'];
-const TAMANHOS = ['normal', 'grande'];
+const MODOS: readonly ModoJogo[] = ['partida', 'treino'];
+const TAMANHOS: readonly TamanhoPalco[] = ['normal', 'grande'];
 
-const distancia = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+const distancia = (a: Vec3, b: Vec3): number => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
 
 // Compras dos bots no começo do freeze (arma preferida, colete, kit, granadas conforme o dinheiro).
-function comprasDosBots(mundo, regras) {
+function comprasDosBots(mundo: Mundo, regras: Partida): void {
   for (const e of mundo.entidades) {
     if (e.bot) botComprar(e, e.time === regras.terroristas ? 'T' : 'CT');
   }
 }
 
 // Cérebros novos a cada round: rotas e alvos antigos não valem depois do reposicionamento.
-function recriarCerebros(mundo, grafo, rng) {
+function recriarCerebros(mundo: Mundo, grafo: Grafo, rng: Rng): void {
   for (const e of mundo.entidades) if (e.bot) e.cerebro = criarCerebro(e, grafo, rng, MAPA.caixas, mundo);
 }
 
 // Espectador: o próximo aliado vivo depois de `idAtual`; sem nenhum vivo, mantém a vista.
-function proximaVista(mundo, idAtual) {
+function proximaVista(mundo: Mundo, idAtual: number): number {
   const eu = mundo.entidades[mundo.jogadorId];
   const aliados = mundo.entidades.filter((e) => e.time === eu.time && e.id !== eu.id);
   const vivos = aliados.filter((e) => e.vivo);
@@ -87,41 +86,43 @@ function temWebGL() {
   }
 }
 
-const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+const clamp = (n: number, min: number, max: number): number => Math.max(min, Math.min(max, n));
 
 // Preferências salvas, validadas: valor estranho no storage cai no padrão.
-function lerConfig(storage) {
-  const primaria = storage.get('primaria', 'rifle');
-  const dificuldade = storage.get('dificuldade', 'medio');
-  const modo = storage.get('modo', 'partida');
-  const tamanho = storage.get('tamanho', 'normal');
+function lerConfig(storage: StoragePort): ConfigJogo {
+  const primaria = storage.get<string>('primaria', 'rifle');
+  const dificuldade = storage.get<string>('dificuldade', 'medio');
+  const modo = storage.get<string>('modo', 'partida');
+  const tamanho = storage.get<string>('tamanho', 'normal');
   const volume = Number(storage.get('volume', 0.8));
   return {
-    primaria: ARMAS[primaria]?.slot === 'primaria' ? primaria : 'rifle',
-    dificuldade: DIFICULDADE[dificuldade] ? dificuldade : 'medio',
+    primaria: (ARMAS as Partial<Record<string, { slot: string }>>)[primaria]?.slot === 'primaria' ? primaria as TipoPrimaria : 'rifle',
+    dificuldade: (DIFICULDADE as Partial<Record<string, unknown>>)[dificuldade] ? dificuldade as NomeDificuldade : 'medio',
     sensibilidade: clamp(Number(storage.get('sensibilidade', 1)) || 1, 0.2, 3),
-    modo: MODOS.includes(modo) ? modo : 'partida',
-    tamanho: TAMANHOS.includes(tamanho) ? tamanho : 'normal',
-    mira: lerMira(storage.get('mira', null), storage.get('corMira', null)), // corMira: a versão antiga só tinha a cor
+    modo: (MODOS as readonly string[]).includes(modo) ? modo as ModoJogo : 'partida',
+    tamanho: (TAMANHOS as readonly string[]).includes(tamanho) ? tamanho as TamanhoPalco : 'normal',
+    // corMira: a versão antiga só tinha a cor
+    mira: lerMira(storage.get<unknown>('mira', null), storage.get<string>('corMira', '')),
     volume: Number.isFinite(volume) ? clamp(volume, 0, 1) : 0.8,
     sensLuneta: clamp(Number(storage.get('sensLuneta', 1)) || 1, 0.3, 2),
-    boneco: storage.get('boneco', 'azul') === 'laranja' ? 'laranja' : 'azul',
+    boneco: storage.get<string>('boneco', 'azul') === 'laranja' ? 'laranja' : 'azul',
   };
 }
 
 // Giro do mouse com a luneta: encolhe na proporção do campo de visão (como no CS) vezes o ajuste do jogador.
-const fatorLuneta = (zoomFov, sens) => sens * Math.tan((zoomFov * Math.PI) / 360) / Math.tan((FOV_PADRAO * Math.PI) / 360);
+const fatorLuneta = (zoomFov: number, sens: number): number => sens * Math.tan((zoomFov * Math.PI) / 360) / Math.tan((FOV_PADRAO * Math.PI) / 360);
 
 // Treino: sem rounds, o relógio só conta o tempo em jogo.
-function criarTreino() {
+function criarTreino(): Partida {
+  // No treino não há freeze, derrotas seguidas nem lado terrorista: esses campos de `Partida` nunca são lidos.
   return {
     placar: { azul: 0, laranja: 0 }, round: 1, fase: 'jogo', tempo: 0,
     vencedorRound: undefined, motivo: null, resultado: null,
-  };
+  } as Partida;
 }
 
 // Ângulo (graus, horário, 0 = à frente) de `origem` em relação à vista de `eu`.
-function anguloDe(eu, origem) {
+function anguloDe(eu: Entidade, origem: { pos: Vec3 }): number {
   const f = direcao(eu.yaw, 0);
   const vx = origem.pos.x - eu.pos.x;
   const vz = origem.pos.z - eu.pos.z;
@@ -129,41 +130,89 @@ function anguloDe(eu, origem) {
 }
 
 // Pan estéreo [-1, 1] de um ponto do mundo em relação à vista de `eu`.
-const panPonto = (eu, pt) => Math.sin((anguloDe(eu, { pos: pt }) * Math.PI) / 180);
+const panPonto = (eu: Entidade, pt: Vec3): number => Math.sin((anguloDe(eu, { pos: pt }) * Math.PI) / 180);
 
-function montar(raiz, ctx) {
+/** O que `iniciar` devolve: o jogo pode ser pausado, retomado e destruído de fora (a página decide quando). */
+export interface InstanciaJogo {
+  pausar(): void;
+  retomar(): void;
+  destruir(): void;
+}
+
+/** Quem ouve os sons de um evento: a entidade do jogador e a posição do ouvido (olho). */
+interface ContextoSom { eu: Entidade; ouvido: Vec3 }
+
+type Render = ReturnType<typeof import('./render').criarRender>;
+
+/** Efeitos de tela cheia com prefixo antigo do WebKit (Safari), que o lib.dom não tem. */
+interface DocumentoWebkit extends Document { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => void }
+interface ElementoWebkit extends HTMLElement { webkitRequestFullscreen?: HTMLElement['requestFullscreen'] }
+
+/** Estado de uma partida em andamento (treino ou 5x5). */
+interface PartidaAtiva {
+  mundo: Mundo;
+  render: Render;
+  entrada: Entrada;
+  grafo: Grafo;
+  rngBots: Rng;
+  partida: Partida;
+  treino: boolean;
+  loadoutAberto: boolean;
+  ultimoTiro: Map<number, number>;
+  avisoFogo: Map<string, number>;
+  avistados: Set<number>;
+  avistarEm: number;
+  proxBip: number;
+  idVista: number;
+  cliqueAntes: boolean;
+  raf: number | null;
+  antes: number;
+  lock: { travou: boolean };
+  pausado: boolean;
+  desligarTrava: () => void;
+  proxCrepito?: number; // s até o próximo estalo do fogo (nasce no primeiro quadro com fogo)
+  mvp?: { nome: string; motivo: 'desarmou' | 'plantou' | 'abates'; kills?: number; voce: boolean } | null;
+}
+
+function montar(raiz: HTMLElement, portas: Portas): InstanciaJogo {
   raiz.dataset.fase = 'menu';
   raiz.dataset.pausado = 'false';
-  const aviso = raiz.querySelector('#bs-aviso');
+  const aviso = raiz.querySelector<HTMLElement>('#bs-aviso');
+  if (!aviso) throw new Error('montar: raiz sem #bs-aviso');
   const motivo = soToque() ? 'Disponível apenas no computador'
     : !temWebGL() ? 'Seu navegador não suporta WebGL' : null;
-  const bloquear = (texto) => {
+  const bloquear = (texto: string) => {
     aviso.textContent = texto;
     aviso.hidden = false;
   };
   if (motivo) {
     bloquear(motivo);
-    return { pause() {}, resume() {}, destruir() {} };
+    return { pausar() {}, retomar() {}, destruir() {} };
   }
 
-  const canvas = raiz.querySelector('#bs-canvas');
-  const palco = raiz.querySelector('.bs-stage');
-  const sons = criarSons(ctx.audio);
-  const cfg = lerConfig(ctx.storage);
+  const canvasBusca = raiz.querySelector<HTMLCanvasElement>('#bs-canvas');
+  const palcoBusca = raiz.querySelector<HTMLElement>('.bs-stage');
+  if (!canvasBusca || !palcoBusca) throw new Error('montar: raiz sem #bs-canvas/.bs-stage');
+  // Constantes tipadas sem `null`: os ouvintes e funções internas abaixo não herdam o estreitamento.
+  const canvas: HTMLCanvasElement = canvasBusca;
+  const palco: HTMLElement = palcoBusca;
+  const sons = criarSons(portas.audio);
+  const cfg = lerConfig(portas.storage);
   sons.definirVolume(cfg.volume);
   raiz.dataset.tamanho = cfg.tamanho;
   raiz.dataset.modo = cfg.modo;
 
   // Tela cheia do palco (o HUD e os menus vão junto). Sair com Esc também solta o mouse → pausa.
-  const docTela = () => document.fullscreenElement ?? document.webkitFullscreenElement ?? null;
+  const docTela = () => document.fullscreenElement ?? (document as DocumentoWebkit).webkitFullscreenElement ?? null;
   function alternarTelaCheia() {
     try {
       if (docTela()) {
-        (document.exitFullscreen ?? document.webkitExitFullscreen)?.call(document);
+        (document.exitFullscreen ?? (document as DocumentoWebkit).webkitExitFullscreen)?.call(document);
         return;
       }
-      const pedir = palco.requestFullscreen ?? palco.webkitRequestFullscreen;
-      const r = pedir?.call(palco, { navigationUI: 'hide' });
+      const pedir = palco.requestFullscreen ?? (palco as ElementoWebkit).webkitRequestFullscreen;
+      // Prefixo antigo do WebKit devolve `undefined` em vez de Promise.
+      const r = pedir?.call(palco, { navigationUI: 'hide' }) as Promise<void> | undefined;
       if (r && typeof r.catch === 'function') r.catch(() => {});
     } catch {
       // sem suporte a tela cheia: o botão não faz nada
@@ -176,26 +225,28 @@ function montar(raiz, ctx) {
   };
   document.addEventListener('fullscreenchange', aoMudarTela);
   document.addEventListener('webkitfullscreenchange', aoMudarTela);
-  let partida = null; // { mundo, render, entrada, grafo, rngBots, partida (regras), idVista, lock, raf, antes }
+  let partida: PartidaAtiva | null = null; // mundo, render, entrada, grafo, rngBots, partida (regras), idVista, lock, raf, antes...
   let iniciando = false;
   let geracao = 0; // cada iniciar() guarda a sua; sair/destruir invalida a que ainda espera o import
   let pausaPendente = false; // o hub pediu pausa enquanto a partida ainda carregava
 
-  let previaMenu = null; // arma clicada no loadout e ainda não equipada: só o boneco do menu segura
+  let previaMenu: TipoPrimaria | 'pistola' | null = null; // arma clicada no loadout e ainda não equipada: só o boneco do menu segura
   const hud = criarHud(raiz, {
     jogar: () => iniciar(),
     escolherPrimaria(tipo) {
       cfg.primaria = tipo;
-      ctx.storage.set('primaria', tipo);
+      portas.storage.set('primaria', tipo);
       if (!partida) return;
       const eu = partida.mundo.entidades[partida.mundo.jogadorId];
       eu.primariaEscolhida = tipo;
       // Só no freeze troca a arma em mãos; nos outros momentos vale a partir do próximo round.
       // No treino troca na hora (e já vem na mão) e fecha o painel.
       if (partida.mundo.economia) return; // com economia a arma vem da compra
-      if (partida.partida.fase === 'freeze') eu.armas.primaria = criarArma(tipo);
+      const armas = eu.armas;
+      if (!armas) return; // ainda sem round posicionado: não há mão para trocar
+      if (partida.partida.fase === 'freeze') armas.primaria = criarArma(tipo);
       else if (partida.treino && eu.vivo) {
-        eu.armas.primaria = criarArma(tipo);
+        armas.primaria = criarArma(tipo);
         if (eu.slot !== 'primaria') eu.slotAnterior = eu.slot;
         eu.slot = 'primaria';
         partida.loadoutAberto = false;
@@ -212,42 +263,42 @@ function montar(raiz, ctx) {
         return false;
       }
       sons.compra();
-      if (ARMAS[item]) sons.saque(item);
+      if ((ARMAS as Partial<Record<string, unknown>>)[item]) sons.saque(item as TipoArma);
       return true;
     },
     mudarModo(m) {
       cfg.modo = m;
       raiz.dataset.modo = m;
-      ctx.storage.set('modo', m);
+      portas.storage.set('modo', m);
     },
     mudarVolume(n) {
       cfg.volume = n;
-      ctx.storage.set('volume', n);
+      portas.storage.set('volume', n);
       sons.definirVolume(n);
     },
     mudarTamanho(t) {
       cfg.tamanho = t;
       raiz.dataset.tamanho = t;
-      ctx.storage.set('tamanho', t);
+      portas.storage.set('tamanho', t);
     },
     mudarMira(m) {
       cfg.mira = m;
-      ctx.storage.set('mira', m);
+      portas.storage.set('mira', m);
     },
     telaCheia: () => alternarTelaCheia(),
     mudarDificuldade(d) {
       cfg.dificuldade = d;
-      ctx.storage.set('dificuldade', d);
+      portas.storage.set('dificuldade', d);
       if (partida) partida.mundo.dificuldade = d;
     },
     mudarSensibilidade(n) {
       cfg.sensibilidade = n;
-      ctx.storage.set('sensibilidade', n);
+      portas.storage.set('sensibilidade', n);
       if (partida) partida.entrada.definirSensibilidade(n);
     },
     mudarSensLuneta(n) {
       cfg.sensLuneta = n;
-      ctx.storage.set('sensLuneta', n);
+      portas.storage.set('sensLuneta', n);
     },
     previaArma(tipo) {
       previaMenu = tipo;
@@ -258,7 +309,7 @@ function montar(raiz, ctx) {
     },
     mudarBoneco(time) {
       cfg.boneco = time;
-      ctx.storage.set('boneco', time);
+      portas.storage.set('boneco', time);
     },
     continuar: () => retomar(),
     sairParaMenu: () => voltarAoMenu(),
@@ -267,9 +318,9 @@ function montar(raiz, ctx) {
   hud.definirConfig(cfg);
 
   // Carreira (só partidas 5x5): conta em memória e grava no fim de cada round, da partida e ao sair.
-  let carreira = lerCarreira(ctx.storage.get('carreira', null));
+  let carreira = lerCarreira(portas.storage.get('carreira', null));
   function salvarCarreira() {
-    ctx.storage.set('carreira', carreira);
+    portas.storage.set('carreira', carreira);
     hud.definirCarreira(resumoCarreira(carreira));
   }
   hud.definirCarreira(resumoCarreira(carreira));
@@ -278,17 +329,19 @@ function montar(raiz, ctx) {
   window.addEventListener('pagehide', salvarSeEmPartida);
 
   // Fundo 3D do menu: o render carrega sob demanda, como na partida, e sai antes dela.
-  let fundo = null;
+  interface FundoMenu { render: Render | null; raf: number | null }
+  let fundo: FundoMenu | null = null;
   async function ligarFundo() {
     if (fundo || partida) return;
-    const f = { render: null, raf: null };
+    const f: FundoMenu = { render: null, raf: null };
     fundo = f;
     try {
-      const { criarRender } = await import('./render.js');
+      const { criarRender } = await import('./render');
       if (fundo !== f) return; // desligado enquanto carregava
-      f.render = criarRender(canvas, MAPA);
+      const render = criarRender(canvas, MAPA);
+      f.render = render;
       const quadro = () => {
-        f.render.desenharVitrine(cfg.boneco, previaMenu ?? cfg.primaria);
+        render.desenharVitrine(cfg.boneco, previaMenu ?? cfg.primaria);
         f.raf = requestAnimationFrame(quadro);
       };
       quadro();
@@ -307,12 +360,12 @@ function montar(raiz, ctx) {
 
   // Liga os eventos do passo a som e efeitos visuais, do ponto de vista do jogador.
   // Sons de outros saem com pan estéreo (esquerda/direita) e abafados pela distância.
-  function reagir(p, eventos) {
+  function reagir(p: PartidaAtiva, eventos: readonly Evento[]) {
     const { mundo, render } = p;
     const eu = mundo.entidades[mundo.jogadorId];
     const ouvido = olho(eu);
-    const distDe = (id) => distancia(ouvido, mundo.entidades[id].pos);
-    const panDe = (id) => (id === eu.id ? 0 : Math.sin((anguloDe(eu, mundo.entidades[id]) * Math.PI) / 180));
+    const distDe = (id: number) => distancia(ouvido, mundo.entidades[id].pos);
+    const panDe = (id: number) => (id === eu.id ? 0 : Math.sin((anguloDe(eu, mundo.entidades[id]) * Math.PI) / 180));
     for (const ev of eventos) {
       if (ev.tipo === 'tiro') {
         sons.tiro(ev.arma, distDe(ev.atirador), panDe(ev.atirador));
@@ -352,20 +405,21 @@ function montar(raiz, ctx) {
       } else if (ev.tipo === 'morte') {
         if (ev.assassino === eu.id) {
           sons.abate(ev.cabeca);
-          if (!p.treino) hud.ganhou(ECONOMIA.recompensaKill[familia(ev.arma)] ?? 300, 'Abate');
+          if (!p.treino) hud.ganhou(ECONOMIA.recompensaKill[familia(ev.arma as TipoArma)] ?? 300, 'Abate');
         }
         if (ev.vitima === eu.id) sons.morte();
         else sons.oof(distDe(ev.vitima), panDe(ev.vitima));
         render.desmanchar(mundo.entidades[ev.vitima]);
         hud.morte({
-          assassino: mundo.entidades[ev.assassino] ?? null, assistente: mundo.entidades[ev.assistente] ?? null,
+          assassino: ev.assassino === null ? null : mundo.entidades[ev.assassino] ?? null,
+          assistente: ev.assistente == null ? null : mundo.entidades[ev.assistente] ?? null,
           vitima: mundo.entidades[ev.vitima],
           arma: ev.arma, cabeca: ev.cabeca,
         });
       } else if (ev.tipo === 'recarga') {
         const ent = mundo.entidades[ev.atirador];
         const tipo = ent.armas?.[ent.slot]?.tipo;
-        sons.recarga(ARMAS[tipo]?.recarga ?? 2.5, distDe(ev.atirador), panDe(ev.atirador));
+        sons.recarga((tipo ? ARMAS[tipo].recarga : undefined) ?? 2.5, distDe(ev.atirador), panDe(ev.atirador));
       } else if (ev.tipo === 'saque') {
         if (ev.id === p.idVista) sons.saque(ev.arma);
       } else if (ev.tipo === 'passo') {
@@ -385,34 +439,34 @@ function montar(raiz, ctx) {
   }
 
   // Eventos das granadas: sons com distância e pan, clarões e o zumbido de quem foi cegado.
-  function reagirGranada(p, ev, { eu, ouvido }) {
+  function reagirGranada(p: PartidaAtiva, ev: Evento, { eu, ouvido }: ContextoSom) {
     const { render } = p;
-    const pt = ev.ponto;
+    const pt = 'ponto' in ev ? ev.ponto : undefined;
     const dist = pt ? distancia(ouvido, pt) : 0;
     const pan = pt ? panPonto(eu, pt) : 0;
     if (ev.tipo === 'arremesso') sons.arremesso(ev.atirador === eu.id ? 0 : dist, ev.atirador === eu.id ? 0 : pan);
     else if (ev.tipo === 'granada-quique') sons.quiqueGranada(dist, pan);
     else if (ev.tipo === 'explosao-he') {
       sons.he(dist, pan);
-      render.explosao(pt, true);
+      render.explosao(ev.ponto, true);
     } else if (ev.tipo === 'flash') {
       sons.flash(dist, pan);
-      render.clarao(pt);
+      render.clarao(ev.ponto);
     } else if (ev.tipo === 'fumaca') sons.fumaca(dist, pan);
     else if (ev.tipo === 'fogo') sons.molotov(dist, pan);
     else if (ev.tipo === 'fogo-apagado') sons.apagar(dist, pan);
     else if (ev.tipo === 'molotov-ar') {
       sons.molotov(dist, pan);
-      render.clarao(pt, 0xff8a1f); // estourou no ar: só o clarão laranja, sem fogo
+      render.clarao(ev.ponto, 0xff8a1f); // estourou no ar: só o clarão laranja, sem fogo
     }
     else if (ev.tipo === 'cegueira' && ev.id === eu.id) sons.zumbido(ev.dur);
   }
 
   // Eventos da C4: sons, avisos na tela e o efeito da explosão.
-  function reagirBomba(p, ev, { eu, ouvido }) {
+  function reagirBomba(p: PartidaAtiva, ev: Evento, { eu, ouvido }: ContextoSom) {
     const { mundo, render } = p;
-    const dist = (pt) => (pt ? distancia(ouvido, pt) : 0);
-    const pan = (pt) => (pt ? panPonto(eu, pt) : 0);
+    const dist = (pt: Vec3 | undefined) => (pt ? distancia(ouvido, pt) : 0);
+    const pan = (pt: Vec3 | undefined) => (pt ? panPonto(eu, pt) : 0);
     if (ev.tipo === 'acao-inicio') {
       const ent = mundo.entidades[ev.id];
       sons.acaoC4(ev.acao, dist(ent.pos), ev.id === eu.id ? 0 : pan(ent.pos));
@@ -435,20 +489,21 @@ function montar(raiz, ctx) {
 
   // Crepitar do fogo das molotovs, de cada poça, enquanto o round corre.
   const CREPITAR_A_CADA = 0.13;
-  function crepitarFogos(p, dt) {
+  function crepitarFogos(p: PartidaAtiva, dt: number) {
     const fogos = p.mundo.fogos;
     if (!fogos?.length || p.partida.fase !== 'jogo') return;
-    p.proxCrepito = (p.proxCrepito ?? 0) - dt;
-    if (p.proxCrepito > 0) return;
+    const restante = (p.proxCrepito ?? 0) - dt;
+    p.proxCrepito = restante;
+    if (restante > 0) return;
     p.proxCrepito = CREPITAR_A_CADA;
     const eu = p.mundo.entidades[p.mundo.jogadorId];
     for (const f of fogos) sons.crepitar(distancia(olho(eu), f.pos), panPonto(eu, f.pos));
   }
 
   // Bipe da C4 plantada, cada vez mais rápido; sai do ponto onde ela está.
-  function bipesDaBomba(p, dt) {
+  function bipesDaBomba(p: PartidaAtiva, dt: number) {
     const b = p.mundo.bomba;
-    if (!b || !b.plantada || b.explodiu || b.desarmada || p.partida.fase !== 'jogo') return;
+    if (!b || !b.pos || !b.plantada || b.explodiu || b.desarmada || p.partida.fase !== 'jogo') return;
     p.proxBip -= dt;
     if (p.proxBip > 0) return;
     p.proxBip = 0.12 + 0.88 * (b.restante / 40) ** 1.5;
@@ -457,11 +512,11 @@ function montar(raiz, ctx) {
   }
 
   // Inimigos que algum aliado vivo enxerga (ou que atiraram há pouco): aparecem no radar.
-  function avistar(p) {
+  function avistar(p: PartidaAtiva) {
     const { mundo } = p;
     const eu = mundo.entidades[mundo.jogadorId];
     const aliados = mundo.entidades.filter((e) => e.vivo && e.time === eu.time);
-    const vistos = new Set();
+    const vistos = new Set<number>();
     for (const e of mundo.entidades) {
       if (!e.vivo || e.time === eu.time) continue;
       if (mundo.tempo - (p.ultimoTiro.get(e.id) ?? -Infinity) < 1.5) { vistos.add(e.id); continue; }
@@ -474,7 +529,7 @@ function montar(raiz, ctx) {
   }
 
   // Troca de round: reposiciona todos, recria os cérebros, limpa as marcas e volta a vista ao jogador.
-  function novoRound(p) {
+  function novoRound(p: PartidaAtiva) {
     if (!p.treino) comprasDosBots(p.mundo, p.partida);
     posicionarParaRound(p.mundo, ladoAzul(p.partida.round));
     p.mundo.bomba = p.treino ? null : criarBomba(p.mundo, p.partida.terroristas);
@@ -487,27 +542,26 @@ function montar(raiz, ctx) {
   }
 
   // Fim de partida: solta o mouse, mostra o resultado e grava as estatísticas (uma vez).
-  function finalizarPartida(p) {
+  function finalizarPartida(p: PartidaAtiva) {
     const { partida: regras, mundo } = p;
     p.entrada.ativar(false);
     if (document.pointerLockElement === canvas) document.exitPointerLock();
     hud.mostrarTabela(false);
     hud.mostrarFim(regras.resultado, regras.placar);
     const eu = mundo.entidades[mundo.jogadorId];
-    const st = ctx.storage;
+    const st = portas.storage;
     st.set('partidas', (Number(st.get('partidas', 0)) || 0) + 1);
     if (regras.resultado === 'azul') {
       st.set('vitorias', (Number(st.get('vitorias', 0)) || 0) + 1);
-      ctx.confetti?.();
+      portas.confetti();
     }
     const kd = eu.kills / Math.max(1, eu.mortes);
     if (kd > (Number(st.get('melhorKD', 0)) || 0)) st.set('melhorKD', kd);
-    contarPartida(carreira, regras.resultado);
+    contarPartida(carreira, regras.resultado ?? 'empate');
     salvarCarreira();
-    ctx.conta?.registrar('blockstrike', { tipo: 'partida', venceu: regras.resultado === 'azul', kd });
   }
 
-  function aplicarEventosPartida(p, eventos) {
+  function aplicarEventosPartida(p: PartidaAtiva, eventos: readonly EventoPartida[]) {
     const { partida, mundo } = p;
     const eu = mundo.entidades[mundo.jogadorId];
     // Intervalo: dinheiro e equipamento voltam ao começo antes de os bots comprarem no novo round.
@@ -516,9 +570,9 @@ function montar(raiz, ctx) {
       if (ev === 'novo-round') novoRound(p);
       else if (ev === 'inicio-round') sons.inicioRound();
       else if (ev === 'fim-round') {
-        const antes = eu.dinheiro;
+        const antes = eu.dinheiro ?? 0;
         premiarRound(mundo, partida, partida.vencedorRound ?? null);
-        hud.ganhou(eu.dinheiro - antes, 'Fim de round');
+        hud.ganhou((eu.dinheiro ?? 0) - antes, 'Fim de round');
         const mvp = registrarMvp(mundo, partida.vencedorRound ?? null, partida.motivo);
         const ent = mvp && mundo.entidades[mvp.id];
         p.mvp = ent ? { nome: ent.nome, motivo: mvp.motivo, kills: mvp.kills, voce: ent.id === eu.id } : null;
@@ -533,7 +587,7 @@ function montar(raiz, ctx) {
   }
 
   // C4 para o HUD (null no treino): relógio, bombsite, progresso de plantar/desarmar e a dica do que dá para fazer.
-  function estadoBomba(p, eu) {
+  function estadoBomba(p: PartidaAtiva, eu: Entidade): EstadoBombaHud | null {
     const b = p.mundo.bomba;
     if (!b) return null;
     const aoVivo = eu.vivo && p.partida.fase === 'jogo';
@@ -547,7 +601,7 @@ function montar(raiz, ctx) {
   }
 
   // Dados do HUD para este frame: vida e arma são de quem está sendo visto (o jogador ou o aliado assistido).
-  function estadoVisivel(p, cmd) {
+  function estadoVisivel(p: PartidaAtiva, cmd: Comandos): VistaHud {
     const { mundo, partida: regras } = p;
     const eu = mundo.entidades[mundo.jogadorId];
     const alvo = mundo.entidades[p.idVista];
@@ -558,22 +612,23 @@ function montar(raiz, ctx) {
         velHoriz: alvo.velHoriz, velMax: velocidadeDe(arma.tipo), noChao: alvo.noChao, agachado: alvo.agachado, zoom: cmd.zoom,
       }) + arma.recuoAcum;
     }
-    const def = arma && ARMAS[arma.tipo];
-    const progressoRecarga = arma && arma.recarregandoAte > 0
+    const def = arma ? ARMAS[arma.tipo] : null;
+    const progressoRecarga = arma && def && arma.recarregandoAte > 0
       ? 1 - (arma.recarregandoAte - mundo.tempo) / def.recarga : 0;
+    const cegoAte = eu.cegoAte ?? 0;
     return {
       bomba: estadoBomba(p, eu), papel: eu.time === regras.terroristas ? 'T' : 'CT',
       compra: eu.vivo && p.mundo.economia && regras.fase === 'freeze'
         ? estadoCompra(eu, eu.time === regras.terroristas ? 'T' : 'CT') : null,
-      dinheiro: p.mundo.economia ? eu.dinheiro : null,
-      equip: p.mundo.economia
+      dinheiro: p.mundo.economia ? eu.dinheiro ?? null : null,
+      equip: p.mundo.economia && eu.equip
         ? { colete: eu.equip.colete, capacete: eu.equip.capacete, kit: eu.equip.kit, granadas: { ...eu.equip.granadas } } : null,
-      cegueira: eu.vivo && mundo.tempo < (eu.cegoAte ?? 0)
-        ? Math.min(1, (eu.cegoAte - mundo.tempo) / Math.max(0.2, eu.cegoDur * 0.5)) : 0,
+      cegueira: eu.vivo && mundo.tempo < cegoAte
+        ? Math.min(1, (cegoAte - mundo.tempo) / Math.max(0.2, (eu.cegoDur ?? 0) * 0.5)) : 0,
       fase: regras.fase, round: regras.round, tempo: regras.tempo, placar: regras.placar,
-      hp: alvo.hp, vivo: eu.vivo, arma: arma && (arma.tipo === 'granada'
-        ? { tipo: 'granada', sel: arma.sel, n: arma.sel ? granadasDe(mundo, alvo)[arma.sel] : 0 }
-        : { ...arma, pente: def.pente }), spread, progressoRecarga,
+      hp: alvo.hp, vivo: eu.vivo, arma: arma && def && (arma.tipo === 'granada'
+        ? { tipo: 'granada', sel: (arma as Mao).sel, n: (arma as Mao).sel ? granadasDe(mundo, alvo)[(arma as Mao).sel!] : 0 }
+        : { ...arma, tipo: arma.tipo as Exclude<TipoArma, 'granada'>, pente: def.pente }), spread, progressoRecarga,
       luneta: eu.vivo && Boolean(cmd.zoom && def?.zoomFov),
       loadout: p.treino && p.loadoutAberto, modo: p.treino ? 'treino' : 'partida',
       vencedorRound: regras.vencedorRound, motivo: regras.motivo, mvp: p.mvp ?? null,
@@ -584,8 +639,9 @@ function montar(raiz, ctx) {
     };
   }
 
-  function quadro(agora) {
+  function quadro(agora: number) {
     const p = partida;
+    if (!p) return; // o quadro já agendado chegou depois de a partida acabar
     const dt = Math.min((agora - p.antes) / 1000, DT_MAX);
     p.antes = agora;
     const { mundo, partida: regras } = p;
@@ -597,7 +653,7 @@ function montar(raiz, ctx) {
     const cmdJogador = atira ? cmd : { ...cmd, atirar: false, usar: false, granada: null, slot: regras.fase === 'freeze' ? null : cmd.slot };
     // Painel de armas aberto no treino: 1–8 escolhem a primária, não trocam de slot.
     if (p.treino && p.loadoutAberto) cmdJogador.slot = null;
-    const armaMao = jogador.vivo && jogador.armas[jogador.slot];
+    const armaMao = jogador.vivo && jogador.armas ? jogador.armas[jogador.slot] : undefined;
     if (atira && cmd.atirar && !p.cliqueAntes && armaMao && armaMao.tipo !== 'granada' && armaMao.municao === 0 && armaMao.reserva === 0) sons.vazio();
     const comandos = new Map([[jogador.id, cmdJogador]]);
     // No freeze os bots não pensam (mundo.passo usa o comando parado): senão o desencalhe
@@ -626,7 +682,8 @@ function montar(raiz, ctx) {
       p.idVista = proximaVista(mundo, p.idVista);
     }
     p.cliqueAntes = cmd.atirar;
-    const zoomFov = cmd.zoom && jogador.vivo ? ARMAS[jogador.armas[jogador.slot].tipo].zoomFov : undefined;
+    const armaAtual = jogador.armas?.[jogador.slot];
+    const zoomFov = cmd.zoom && jogador.vivo && armaAtual ? ARMAS[armaAtual.tipo].zoomFov : undefined;
     p.entrada.definirFatorMira(zoomFov ? fatorLuneta(zoomFov, cfg.sensLuneta) : 1);
     p.render.desenhar(mundo, p.idVista, { zoomFov });
     hud.atualizar(estadoVisivel(p, cmd));
@@ -650,11 +707,13 @@ function montar(raiz, ctx) {
   // Pausado: só redesenha a cena (a janela pode ter sido redimensionada); a simulação não anda.
   function quadroPausado() {
     const p = partida;
+    if (!p) return;
     p.render.desenhar(p.mundo, p.idVista, {});
     p.raf = requestAnimationFrame(quadroPausado);
   }
 
   function agendar() {
+    if (!partida) return;
     partida.entrada.ativar(true);
     partida.antes = performance.now();
     partida.raf = requestAnimationFrame(quadro);
@@ -771,7 +830,7 @@ function montar(raiz, ctx) {
     });
     entrada.travar(); // precisa estar dentro do gesto de clique
     try {
-      const { criarRender } = await import('./render.js');
+      const { criarRender } = await import('./render');
       if (minha !== geracao) { // saiu para o menu ou destruiu enquanto carregava
         document.removeEventListener('pointerlockchange', aoTravar);
         entrada.destruir();
@@ -831,12 +890,12 @@ function montar(raiz, ctx) {
   }
 
   return {
-    pause() {
+    pausar() {
       if (docTela() === palco) alternarTelaCheia(); // saiu da rota: não deixa a tela cheia presa
       pausarPartida(true);
       desligarFundo();
     },
-    resume: reexibir,
+    retomar: reexibir,
     destruir() {
       salvarSeEmPartida();
       window.removeEventListener('pagehide', salvarSeEmPartida);
@@ -851,30 +910,18 @@ function montar(raiz, ctx) {
   };
 }
 
-let instancia = null;
+// Uma instância por raiz: iniciar de novo na mesma raiz derruba a anterior.
+const instanciasPorRaiz = new WeakMap<HTMLElement, InstanciaJogo>();
 
-export default {
-  id: 'blockstrike',
-  nome: 'Block Strike',
-  icone: '🔫',
-  iconeClasse: 'bs-icon',
-  descricao: 'FPS 5x5 contra bots',
-  badge: { texto: 'FPS', cor: 'orange' },
-  mount(raiz, ctx) {
-    if (instancia) instancia.destruir();
-    raiz.innerHTML = HTML;
-    instancia = montar(raiz, ctx);
-  },
-  pause() {
-    if (instancia) instancia.pause();
-  },
-  resume() {
-    if (instancia) instancia.resume();
-  },
-  recorde(storage) {
-    if (storage.get('partidas', 0) === 0) return null;
-    const vitorias = storage.get('vitorias', 0);
-    const melhorKD = Number(storage.get('melhorKD', 0)) || 0;
-    return `${vitorias} vitórias · K/D ${melhorKD.toFixed(2)}`;
-  }
-};
+/**
+ * Ponto de entrada do cliente: monta o jogo dentro de `raiz` e devolve como controlá-lo.
+ * Sem WebGL ou só com toque, mostra o aviso e devolve uma instância que não faz nada.
+ * Áudio, persistência e confete vêm de `portas`; o jogo não toca em globais para isso.
+ */
+export function iniciar(raiz: HTMLElement, portas: Portas): InstanciaJogo {
+  instanciasPorRaiz.get(raiz)?.destruir();
+  raiz.innerHTML = HTML;
+  const instancia = montar(raiz, portas);
+  instanciasPorRaiz.set(raiz, instancia);
+  return instancia;
+}

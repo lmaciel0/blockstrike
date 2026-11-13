@@ -9,8 +9,8 @@ export default defineConfig({
     // Ligado sempre, para o `npm test` também barrar erro de tipo nos testes.
     typecheck: {
       enabled: true,
-      include: ['packages/sim/test/**/*.test.ts'],
-      tsconfig: './packages/sim/tsconfig.test.json',
+      include: ['packages/*/test/**/*.test.ts'],
+      tsconfig: './tsconfig.test.json',
     },
   },
 });

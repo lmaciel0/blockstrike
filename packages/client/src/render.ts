@@ -3,16 +3,19 @@
  * Mapa em uma BufferGeometry só (uma draw call) e bonecos de blocos sob demanda.
  */
 
-import * as THREE from '../../vendor/three.module.min.js';
-import { olho } from '../../sim/src/fisica.js';
-import { ARMAS, FOV_PADRAO } from '../../sim/src/config.js';
-import { SAQUE } from '../../sim/src/armas.js';
-import { criarRng } from '../../sim/src/rng.js';
-import { MODELOS_ARMA } from './modelos.js';
+import * as THREE from 'three';
+import {
+  olho, ARMAS, FOV_PADRAO, SAQUE, criarRng,
+} from '@blockstrike/sim';
+import type {
+  Caixa, Entidade, Fogo, GranadaNoAr, Mao, Mapa, Mundo, Time, TipoArma, TipoGranada, Vec3,
+} from '@blockstrike/sim';
+import { MODELOS_ARMA } from './modelos';
+import type { ModeloArma } from './modelos';
 
 const PITCH_CAM = Math.PI / 2 - 0.01; // pitch + recuo nunca passa da vertical
 const COR_CABECA = 0xf5cd30;
-const COR_TIME = { azul: 0x2f6fde, laranja: 0xf08a24 };
+const COR_TIME: Record<Time, number> = { azul: 0x2f6fde, laranja: 0xf08a24 };
 const MAX_IMPACTOS = 64;
 const DURACAO_CLARAO = 0.05;
 const MAX_RASTROS = 24;
@@ -28,7 +31,7 @@ const VEL_ZOOM = 18; // 1/s: a luneta abre e fecha deslizando o campo de visão
 const POSE = { bracoD: [1.25, 0.2], bracoE: [1.4, -0.7], arma: { x: 0.17, y: 1.27, z: -0.45 } };
 
 // Faces de uma caixa: normal e os 4 cantos (em ordem anti-horária vista de fora).
-const FACES = [
+const FACES: ReadonlyArray<{ n: readonly [number, number, number]; v: ReadonlyArray<readonly [number, number, number]> }> = [
   { n: [1, 0, 0], v: [[1, 0, 1], [1, 0, 0], [1, 1, 0], [1, 1, 1]] },
   { n: [-1, 0, 0], v: [[0, 0, 0], [0, 0, 1], [0, 1, 1], [0, 1, 0]] },
   { n: [0, 1, 0], v: [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]] },
@@ -38,14 +41,14 @@ const FACES = [
 ];
 
 // 24 vértices e 36 índices por caixa, normal por face e cor por vértice.
-function geometriaDoMapa(caixas) {
+function geometriaDoMapa(caixas: readonly Caixa[]): THREE.BufferGeometry {
   const pos = new Float32Array(caixas.length * 24 * 3);
   const nor = new Float32Array(caixas.length * 24 * 3);
   const cor = new Float32Array(caixas.length * 24 * 3);
   const idx = new Uint32Array(caixas.length * 36);
   const c = new THREE.Color();
   caixas.forEach((caixa, i) => {
-    c.setHex(caixa.cor);
+    c.set(caixa.cor);
     const { min, max } = caixa;
     FACES.forEach((face, f) => {
       // Sombreamento fixo por face dá leitura de volume mesmo sem luz forte.
@@ -55,7 +58,7 @@ function geometriaDoMapa(caixas) {
         pos[o] = q[0] ? max.x : min.x;
         pos[o + 1] = q[1] ? max.y : min.y;
         pos[o + 2] = q[2] ? max.z : min.z;
-        nor.set(face.n, o);
+        nor.set(face.n as unknown as number[], o);
         cor[o] = c.r * tom;
         cor[o + 1] = c.g * tom;
         cor[o + 2] = c.b * tom;
@@ -72,7 +75,7 @@ function geometriaDoMapa(caixas) {
   return g;
 }
 
-export function criarRender(canvas, mapa) {
+export function criarRender(canvas: HTMLCanvasElement, mapa: Mapa) {
   const aleatorio = criarRng(Date.now()); // efeitos visuais: sangue, destroços, faíscas e tremor
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
@@ -92,7 +95,7 @@ export function criarRender(canvas, mapa) {
   scene.add(new THREE.Mesh(geoMapa, matMapa));
 
   // Bombsites: retângulo amarelo translúcido no chão com a letra grande (textura de canvas, uma por site).
-  const marcasSite = [];
+  const marcasSite: Array<THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>> = [];
   for (const [nome, s] of Object.entries(mapa.bombsites ?? {})) {
     const larg = s.max.x - s.min.x;
     const prof = s.max.z - s.min.z;
@@ -100,6 +103,7 @@ export function criarRender(canvas, mapa) {
     tela.width = 256;
     tela.height = Math.round(256 * (prof / larg));
     const c2 = tela.getContext('2d');
+    if (!c2) continue;
     c2.fillStyle = 'rgba(250, 204, 21, 0.18)';
     c2.fillRect(0, 0, tela.width, tela.height);
     c2.strokeStyle = 'rgba(250, 204, 21, 0.9)';
@@ -134,7 +138,7 @@ export function criarRender(canvas, mapa) {
   scene.add(c4);
 
   // Avatares estilo Roblox: caixas compartilhadas, criados na primeira vez que a entidade aparece.
-  const topo = (w, h, d) => new THREE.BoxGeometry(w, h, d).translate(0, -h / 2, 0); // pivô no topo
+  const topo = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d).translate(0, -h / 2, 0); // pivô no topo
   const geo = {
     cabeca: new THREE.BoxGeometry(0.4, 0.4, 0.4).translate(0, 0.2, 0),
     olho: new THREE.BoxGeometry(0.07, 0.07, 0.02),
@@ -143,20 +147,35 @@ export function criarRender(canvas, mapa) {
     perna: topo(0.22, 0.8, 0.22),
     sombra: new THREE.CircleGeometry(0.42, 16).rotateX(-Math.PI / 2),
   };
-  const mat = {
+  const mat: Record<string, THREE.Material> = {
     cabeca: new THREE.MeshLambertMaterial({ color: COR_CABECA }),
     olho: new THREE.MeshBasicMaterial({ color: 0x111111 }),
     sombra: new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false }),
   };
-  for (const [time, hex] of Object.entries(COR_TIME)) {
+  for (const [time, hex] of Object.entries(COR_TIME) as Array<[Time, number]>) {
     mat[time] = new THREE.MeshLambertMaterial({ color: hex });
     mat[`${time}Escuro`] = new THREE.MeshLambertMaterial({ color: new THREE.Color(hex).multiplyScalar(0.6) });
   }
-  const avatares = new Map();
+  // Boneco de uma entidade: grupos com pivô nas juntas; `tipo` é a arma que está na mão (null = nenhuma).
+  interface Avatar {
+    g: THREE.Group;
+    cabeca: THREE.Group;
+    bracoE: THREE.Mesh;
+    bracoD: THREE.Mesh;
+    pernaE: THREE.Mesh;
+    pernaD: THREE.Mesh;
+    arma: THREE.Group;
+    tipo: TipoArma | null | undefined;
+    dist: number;
+    amp: number;
+    fase: number;
+  }
+  const avatares = new Map<number, Avatar>();
 
-  function criarAvatar(ent) {
+  // A vitrine do menu cria um avatar só com o time (sem entidade no mundo).
+  function criarAvatar(ent: Pick<Entidade, 'time'> & Partial<Pick<Entidade, 'id' | 'distAndada'>>): Avatar {
     const g = new THREE.Group();
-    const parte = (geometria, material, x, y) => {
+    const parte = (geometria: THREE.BufferGeometry, material: THREE.Material, x: number, y: number) => {
       const m = new THREE.Mesh(geometria, material);
       m.position.set(x, y, 0);
       g.add(m);
@@ -193,29 +212,29 @@ export function criarRender(canvas, mapa) {
   }
 
   // Troca o modelo na mão do boneco: as mesmas caixas da arma em primeira pessoa (a granada não aparece).
-  function armarAvatar(a, tipo) {
+  function armarAvatar(a: Avatar, tipo: TipoArma | null) {
     a.tipo = tipo;
     a.arma.clear();
-    const modelo = MODELOS_ARMA[tipo];
+    const modelo = tipo === null ? undefined : (MODELOS_ARMA as Partial<Record<TipoArma, ModeloArma>>)[tipo];
     if (!modelo) return;
     for (const [w, h, d, x, y, z, claro] of modelo.caixas) {
       const chave = `${w},${h},${d}`;
       if (!geoArma.has(chave)) geoArma.set(chave, new THREE.BoxGeometry(w, h, d));
-      const m = new THREE.Mesh(geoArma.get(chave), tipo === 'faca' && !claro ? matFaca : claro ? matArmaClara : matArma);
+      const m = new THREE.Mesh(geoArma.get(chave)!, tipo === 'faca' && !claro ? matFaca : claro ? matArmaClara : matArma);
       m.position.set(x, y, z);
       a.arma.add(m);
     }
   }
 
   // Idle: os braços sobem e descem com a respiração e a arma acompanha as mãos.
-  function respirar(a, t) {
+  function respirar(a: Avatar, t: number) {
     const r = Math.sin(t * 1.6 + a.fase) * 0.035;
     a.bracoE.rotation.x = POSE.bracoE[0] + r;
     a.bracoD.rotation.x = POSE.bracoD[0] + r;
     a.arma.position.y = POSE.arma.y + r * 0.57;
   }
 
-  function atualizarAvatar(ent, idVista) {
+  function atualizarAvatar(ent: Entidade, idVista: number) {
     let a = avatares.get(ent.id);
     if (!a) {
       a = criarAvatar(ent);
@@ -240,12 +259,12 @@ export function criarRender(canvas, mapa) {
   // Marcas de impacto: anel de 64 caixas pretas reaproveitadas.
   const geoImpacto = new THREE.BoxGeometry(0.08, 0.08, 0.08);
   const matImpacto = new THREE.MeshBasicMaterial({ color: 0x000000 });
-  const impactos = [];
+  const impactos: THREE.Mesh[] = [];
   let proxImpacto = 0;
   const luzTiro = new THREE.PointLight(0xffd070, 0, 12);
   scene.add(luzTiro);
 
-  function impacto(ponto, normal) {
+  function impacto(ponto: Vec3, normal: Vec3) {
     if (impactos.length < MAX_IMPACTOS) {
       const m = new THREE.Mesh(geoImpacto, matImpacto);
       scene.add(m);
@@ -275,11 +294,11 @@ export function criarRender(canvas, mapa) {
 
   // Rastros de bala: segmentos de linha reaproveitados, visíveis por um instante.
   const matRastro = new THREE.LineBasicMaterial({ color: 0xffe9a8, transparent: true, opacity: 0.75 });
-  const rastros = [];
+  const rastros: Array<{ linha: THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>; vida: number }> = [];
   let proxRastro = 0;
   const tmp = new THREE.Vector3();
 
-  function rastro(de, ate, proprio) {
+  function rastro(de: Vec3, ate: Vec3, proprio: boolean) {
     if (rastros.length < MAX_RASTROS) {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
@@ -294,7 +313,7 @@ export function criarRender(canvas, mapa) {
     // Do jogador, o rastro sai da boca da arma; dos outros, um pouco abaixo do olho.
     if (proprio && viewAtual) viewAtual.boca.getWorldPosition(tmp);
     else tmp.set(de.x, de.y - 0.2, de.z);
-    const pos = r.linha.geometry.attributes.position;
+    const pos = r.linha.geometry.attributes.position as THREE.BufferAttribute;
     pos.setXYZ(0, tmp.x, tmp.y, tmp.z);
     pos.setXYZ(1, ate.x, ate.y, ate.z);
     pos.needsUpdate = true;
@@ -305,10 +324,12 @@ export function criarRender(canvas, mapa) {
   // Sangue: gotas (caixinhas vermelhas) com gravidade, de um pool fixo.
   const geoGota = new THREE.BoxGeometry(0.06, 0.06, 0.06);
   const matGota = new THREE.MeshBasicMaterial({ color: 0xb3121b });
-  const gotas = [];
+  // Partícula de pool fixo: reaproveitada; `vida` <= 0 = livre.
+  interface Particula { m: THREE.Mesh; vida: number; v: THREE.Vector3 }
+  const gotas: Particula[] = [];
   let proxGota = 0;
 
-  function sangue(ponto, cabeca) {
+  function sangue(ponto: Vec3, cabeca: boolean) {
     const n = cabeca ? 8 : 5;
     for (let i = 0; i < n; i++) {
       if (gotas.length < MAX_GOTAS) {
@@ -329,10 +350,10 @@ export function criarRender(canvas, mapa) {
   // Fagulhas do capacete: cubinhos amarelos e laranja que saltam do ponto do headshot.
   const geoFagulha = new THREE.BoxGeometry(0.04, 0.04, 0.04);
   const matsFagulha = [new THREE.MeshBasicMaterial({ color: 0xffd23f }), new THREE.MeshBasicMaterial({ color: 0xff8a1f })];
-  const fagulhas = [];
+  const fagulhas: Particula[] = [];
   let proxFagulha = 0;
 
-  function fagulhasCapacete(ponto) {
+  function fagulhasCapacete(ponto: Vec3) {
     for (let i = 0; i < 10; i++) {
       if (fagulhas.length < MAX_FAGULHAS) {
         const m = new THREE.Mesh(geoFagulha, matsFagulha[fagulhas.length % 2]);
@@ -351,17 +372,17 @@ export function criarRender(canvas, mapa) {
 
   // Desmanche ao morrer: os 6 blocos do boneco saem voando, quicam e ficam no chão por um tempo.
   // [geometria, material, x, y (centro do bloco), alturaDoBloco]; braços e pernas têm pivô no topo.
-  const PECAS = [
+  const PECAS: ReadonlyArray<readonly [keyof typeof geo, 'time' | 'escuro' | 'cabeca', number, number, number]> = [
     ['tronco', 'time', 0, 0.8, 0.3], ['cabeca', 'cabeca', 0, 1.4, 0.2],
     ['braco', 'escuro', -0.34, 1.4, 0.09], ['braco', 'escuro', 0.34, 1.4, 0.09],
     ['perna', 'escuro', -0.12, 0.8, 0.11], ['perna', 'escuro', 0.12, 0.8, 0.11],
   ];
   const MAX_PECAS = 72;
   const VIDA_PECA = 6;
-  const pecas = [];
+  const pecas: Array<Particula & { giro: THREE.Vector3; piso: number }> = [];
   let proxPeca = 0;
 
-  function desmanchar(ent, vel = 2.5) {
+  function desmanchar(ent: Entidade, vel = 2.5) {
     const cos = Math.cos(ent.yaw);
     const sen = Math.sin(ent.yaw);
     for (const [chave, material, ox, oy, piso] of PECAS) {
@@ -385,7 +406,7 @@ export function criarRender(canvas, mapa) {
     }
   }
 
-  function animarPecas(dt) {
+  function animarPecas(dt: number) {
     for (const p of pecas) {
       if (p.vida <= 0) continue;
       p.vida -= dt;
@@ -413,15 +434,15 @@ export function criarRender(canvas, mapa) {
   scene.add(fogo);
   const matFaisca = new THREE.MeshBasicMaterial({ color: 0xffd23f });
   const geoFaisca = new THREE.BoxGeometry(0.18, 0.18, 0.18);
-  const faiscas = [];
+  const faiscas: Particula[] = [];
   let vidaFogo = 0.9;
   let escalaFogo = 20;
   let fogoT = 0;
   let tremor = 0;
-  let tremorDe = null;
+  let tremorDe: Vec3 | null = null;
 
   // `pequena`: granada HE (bola menor, rápida e com tremor fraco); senão, a C4.
-  function explosao(ponto, pequena = false) {
+  function explosao(ponto: Vec3, pequena = false) {
     fogo.position.set(ponto.x, ponto.y + (pequena ? 0.6 : 1), ponto.z);
     vidaFogo = pequena ? 0.45 : 0.9;
     escalaFogo = pequena ? 7 : 20;
@@ -445,7 +466,7 @@ export function criarRender(canvas, mapa) {
     // Quem estava perto vira blocos pelo evento de morte; aqui só o ambiente.
   }
 
-  function animarExplosao(dt) {
+  function animarExplosao(dt: number) {
     if (fogoT > 0) {
       fogoT -= dt;
       const k = 1 - Math.max(0, fogoT) / vidaFogo;
@@ -472,8 +493,8 @@ export function criarRender(canvas, mapa) {
     molotov: new THREE.MeshLambertMaterial({ color: 0x6b4a1f }),
   };
   const geoGranada = new THREE.BoxGeometry(0.16, 0.16, 0.16);
-  const cubosGranada = [];
-  function desenharGranadas(mundo, dt) {
+  const cubosGranada: Array<THREE.Mesh<THREE.BoxGeometry, THREE.Material>> = [];
+  function desenharGranadas(mundo: Mundo, dt: number) {
     const lista = mundo.granadas ?? [];
     while (cubosGranada.length < Math.min(lista.length, 16)) {
       const m = new THREE.Mesh(geoGranada, matsGranada.he);
@@ -482,7 +503,7 @@ export function criarRender(canvas, mapa) {
       cubosGranada.push(m);
     }
     cubosGranada.forEach((m, i) => {
-      const g = lista[i];
+      const g = lista[i] as GranadaNoAr | undefined; // sobram cubos quando há menos granadas que cubos
       m.visible = Boolean(g);
       if (!g) return;
       m.material = matsGranada[g.tipo];
@@ -523,11 +544,11 @@ export function criarRender(canvas, mapa) {
   const luzFogo = new THREE.PointLight(0xff7a1a, 0, 9);
   scene.add(luzFogo);
   const CORES_CHAMA = [new THREE.Color(0xff6a00), new THREE.Color(0xd9381e), new THREE.Color(0xffd23f)];
-  function desenharFogo(mundo) {
+  function desenharFogo(mundo: Mundo) {
     const t = performance.now() / 1000;
     let n = 0;
     let b = 0;
-    let maisPerto = null;
+    let maisPerto = null as Fogo | null; // atribuído dentro do forEach: sem o `as` o TS estreita para `never`
     let dPerto = Infinity;
     (mundo.fogos ?? []).forEach((f, idx) => {
       const idade = mundo.tempo - f.nasceEm;
@@ -567,7 +588,7 @@ export function criarRender(canvas, mapa) {
     } else luzFogo.intensity = 0;
   }
 
-  function desenharFumaca(mundo) {
+  function desenharFumaca(mundo: Mundo) {
     let n = 0;
     for (const f of mundo.fumacas ?? []) {
       const idade = mundo.tempo - f.nasceEm;
@@ -589,14 +610,14 @@ export function criarRender(canvas, mapa) {
   brilho.visible = false;
   scene.add(brilho);
   let brilhoT = 0;
-  const clarearFlash = (ponto, cor = 0xffffff) => {
+  const clarearFlash = (ponto: Vec3, cor = 0xffffff) => {
     matBrilho.color.setHex(cor);
     brilho.position.set(ponto.x, ponto.y, ponto.z);
     brilhoT = 0.3;
     brilho.visible = true;
   };
 
-  function animarEfeitos(dt) {
+  function animarEfeitos(dt: number) {
     animarPecas(dt);
     animarExplosao(dt);
     if (brilhoT > 0) {
@@ -634,22 +655,24 @@ export function criarRender(canvas, mapa) {
   const matFaca = new THREE.MeshLambertMaterial({ color: 0xcfd6dd });
   const matClarao = new THREE.MeshBasicMaterial({ color: 0xffe040 });
   const geoClarao = new THREE.BoxGeometry(0.09, 0.09, 0.06);
-  const geoArma = new Map();
-  const viewmodels = new Map();
-  let viewAtual = null;
+  // Arma na mão: grupo preso à câmera, a "boca" do cano (clarão do tiro) e o pente que sai na recarga.
+  interface ViewModel { g: THREE.Group; boca: THREE.Mesh; pente: { m: THREE.Mesh; y: number } | null }
+  const geoArma = new Map<string, THREE.BoxGeometry>();
+  const viewmodels = new Map<string, ViewModel>();
+  let viewAtual: ViewModel | null = null;
   let clarao = 0;
   let recuo = 0;
   let recuoArma = 0;
 
-  function criarViewmodel(tipo) {
-    const modelo = MODELOS_ARMA[tipo] ?? MODELOS_ARMA.rifle;
+  function criarViewmodel(tipo: string): ViewModel {
+    const modelo = (MODELOS_ARMA as Partial<Record<string, ModeloArma>>)[tipo] ?? MODELOS_ARMA.rifle;
     const g = new THREE.Group();
-    let pente = null;
+    let pente: ViewModel['pente'] = null;
     for (const [i, [w, h, d, x, y, z, claro]] of modelo.caixas.entries()) {
       const chave = `${w},${h},${d}`;
       if (!geoArma.has(chave)) geoArma.set(chave, new THREE.BoxGeometry(w, h, d));
       const mat = tipo === 'faca' ? (claro ? matArmaClara : matFaca) : claro ? matArmaClara : matArma;
-      const m = new THREE.Mesh(geoArma.get(chave), mat);
+      const m = new THREE.Mesh(geoArma.get(chave)!, mat);
       m.position.set(x, y, z);
       g.add(m);
       if (i === modelo.pente) pente = { m, y };
@@ -671,12 +694,12 @@ export function criarRender(canvas, mapa) {
   const geoGargalo = new THREE.BoxGeometry(0.018, 0.04, 0.018).translate(0, 0.07, 0);
   const geoPano = new THREE.BoxGeometry(0.022, 0.025, 0.022).translate(0, 0.1, 0);
   const matPano = new THREE.MeshBasicMaterial({ color: 0xff8a1f });
-  function criarViewmodelGranada(sel) {
+  function criarViewmodelGranada(sel: string): ViewModel {
     const g = new THREE.Group();
     if (sel === 'molotov') {
       g.add(new THREE.Mesh(geoGarrafa, matsGranada.molotov), new THREE.Mesh(geoGargalo, matsGranada.molotov),
         new THREE.Mesh(geoPano, matPano));
-    } else g.add(new THREE.Mesh(geoGranadaMao, matsGranada[sel] ?? matsGranada.he));
+    } else g.add(new THREE.Mesh(geoGranadaMao, (matsGranada as Partial<Record<string, THREE.Material>>)[sel] ?? matsGranada.he));
     const boca = new THREE.Mesh(geoClarao, matClarao);
     boca.visible = false;
     g.add(boca);
@@ -687,11 +710,13 @@ export function criarRender(canvas, mapa) {
   }
 
   // `chave` é o tipo da arma; a granada ganha um modelo por tipo selecionado (`granada-he`, ...).
-  function viewmodelDe(chave) {
-    if (!viewmodels.has(chave)) {
-      viewmodels.set(chave, chave.startsWith('granada-') ? criarViewmodelGranada(chave.slice(8)) : criarViewmodel(chave));
+  function viewmodelDe(chave: string): ViewModel {
+    let vm = viewmodels.get(chave);
+    if (!vm) {
+      vm = chave.startsWith('granada-') ? criarViewmodelGranada(chave.slice(8)) : criarViewmodel(chave);
+      viewmodels.set(chave, vm);
     }
-    return viewmodels.get(chave);
+    return vm;
   }
 
   const flash = () => {
@@ -704,22 +729,22 @@ export function criarRender(canvas, mapa) {
   let golpeT = 0;
   let golpeForte = false;
   let golpeLado = 1;
-  const golpe = (forte) => {
+  const golpe = (forte: boolean) => {
     golpeForte = forte;
     inspecao = 0;
     golpeT = forte ? 0.45 : 0.3;
     golpeLado = -golpeLado; // golpes leves alternam o lado, como no CS
   };
   let balanco = 0; // amplitude do balanço ao andar (0..1)
-  let yawAntes = null;
+  let yawAntes: number | null = null;
   let ginga = 0; // a arma atrasa um pouco quando a mira gira
-  let pitchAntes = null;
+  let pitchAntes: number | null = null;
   let gingaV = 0; // e sobe/desce um pouco quando a mira sobe ou desce
   const DUR_INSPECAO = 1.7;
   let inspecao = 0; // F: gira a arma na frente da câmera para admirá-la
   const inspecionar = () => { if (saque <= 0 && golpeT <= 0) inspecao = DUR_INSPECAO; };
-  let olhoY = null;
-  let vistaAntes = null;
+  let olhoY: number | null = null;
+  let vistaAntes: number | null = null;
   const recuoVisual = () => {
     recuo = 0.04;
     recuoArma = 0.08;
@@ -738,12 +763,15 @@ export function criarRender(canvas, mapa) {
 
   let ultimo = performance.now();
   let fovAtual = FOV_PADRAO;
-  let tipoAntes = null;
+  let tipoAntes: string | null = null;
 
   // Posição e giro da arma na mão: balanço ao andar, ginga ao mirar, saque, recarga e golpe.
-  function posarArma(vista, mundo, dt) {
-    const g = viewAtual.g;
+  function posarArma(vista: Entidade, mundo: Mundo, dt: number) {
+    const view = viewAtual;
+    if (!view || !vista.armas) return; // sem arma na mão (antes do primeiro round) não há o que posar
+    const g = view.g;
     const arma = vista.armas[vista.slot];
+    if (!arma) return; // espelha a mão sem arma (ex.: economia, antes de comprar a primária)
     const andando = vista.noChao && vista.velHoriz > 0.5;
     balanco += ((andando ? Math.min(1, vista.velHoriz / 5) : 0) - balanco) * Math.min(1, dt * 8);
     const fase = vista.distAndada * 2.2;
@@ -777,7 +805,7 @@ export function criarRender(canvas, mapa) {
       rx -= 0.5 * k;
       rz += 0.6 * k;
     }
-    const pente = viewAtual.pente;
+    const pente = view.pente;
     if (pente) {
       let dy = 0;
       let visivel = true;
@@ -820,10 +848,10 @@ export function criarRender(canvas, mapa) {
     }
     g.position.set(x, y, z);
     g.rotation.set(rx, ry, rz);
-    viewAtual.boca.visible = clarao > 0;
+    view.boca.visible = clarao > 0;
   }
 
-  function desenhar(mundo, idVista, { zoomFov } = {}) {
+  function desenhar(mundo: Mundo, idVista: number, { zoomFov }: { zoomFov?: number } = {}) {
     const agora = performance.now();
     const dt = Math.min((agora - ultimo) / 1000, 0.1);
     ultimo = agora;
@@ -855,11 +883,11 @@ export function criarRender(canvas, mapa) {
     // C4 no chão: visível solta ou plantada; LED pisca vermelho (verde depois de desarmada).
     const bomba = mundo.bomba;
     c4.visible = Boolean(bomba && bomba.pos);
-    if (c4.visible) {
+    if (bomba && bomba.pos) {
       c4.position.set(bomba.pos.x, bomba.pos.y, bomba.pos.z);
       matLed.color.setHex(bomba.desarmada ? 0x22dd55 : Math.floor(agora / (bomba.plantada ? 250 : 700)) % 2 ? 0xff2020 : 0x550808);
     }
-    const subida = vista.vivo && vista.armas ? vista.armas[vista.slot].recuoAcum : 0; // a mira acompanha o spray
+    const subida = vista.vivo && vista.armas ? vista.armas[vista.slot]?.recuoAcum ?? 0 : 0; // a mira acompanha o spray
     const inclina = vista.pitch + subida + recuo;
     camera.rotation.set(Math.max(-PITCH_CAM, Math.min(PITCH_CAM, inclina)), vista.yaw, 0);
     recuo = Math.max(0, recuo - dt * 0.3);
@@ -867,13 +895,13 @@ export function criarRender(canvas, mapa) {
     // Arma na mão: some com o zoom da sniper (mira de luneta) e sai do campo de visão ao morrer.
     const armaAtiva = vista.vivo && vista.armas ? vista.armas[vista.slot] : null;
     const tipoAtivo = armaAtiva ? armaAtiva.tipo : null;
-    const chaveView = tipoAtivo === 'granada' ? `granada-${armaAtiva.sel ?? 'he'}` : tipoAtivo;
+    const chaveView = armaAtiva && tipoAtivo === 'granada' ? `granada-${(armaAtiva as Mao).sel ?? 'he'}` : tipoAtivo;
     const alvoView = chaveView && zoomFov === undefined ? viewmodelDe(chaveView) : null;
     if (alvoView !== viewAtual) {
       if (viewAtual) viewAtual.g.visible = false;
       // Arma nova (não a mesma voltando do zoom): sobe de baixo da tela durante o saque.
       if (alvoView && chaveView !== tipoAntes) {
-        saqueDur = SAQUE[ARMAS[tipoAtivo].slot] ?? 0.3;
+        saqueDur = SAQUE[ARMAS[tipoAtivo as TipoArma].slot] ?? 0.3;
         saque = saqueDur;
         golpeT = 0;
         inspecao = 0;
@@ -898,8 +926,8 @@ export function criarRender(canvas, mapa) {
   }
 
   // Fundo do menu: um boneco parado no spawn A e a câmera indo e voltando devagar na frente dele.
-  let vitrine = null;
-  function desenharVitrine(time = 'azul', tipo = 'rifle') {
+  let vitrine: (Avatar & { time: Time }) | null = null;
+  function desenharVitrine(time: Time = 'azul', tipo: TipoArma = 'rifle') {
     if (!vitrine || vitrine.time !== time) {
       if (vitrine) scene.remove(vitrine.g);
       vitrine = { ...criarAvatar({ time }), time };
@@ -929,7 +957,7 @@ export function criarRender(canvas, mapa) {
     geoArma.forEach((g) => g.dispose());
     [matArma, matArmaClara, matFaca, matClarao].forEach((m) => m.dispose());
     geoClarao.dispose();
-    for (const m of marcasSite) { m.material.map.dispose(); m.material.dispose(); m.geometry.dispose(); }
+    for (const m of marcasSite) { m.material.map?.dispose(); m.material.dispose(); m.geometry.dispose(); }
     [geoC4, geoLed, geoFogo, geoFaisca].forEach((g) => g.dispose());
     [matC4, matLed, matFogo, matFaisca, matFumaca, matBrilho, ...Object.values(matsGranada)].forEach((m) => m.dispose());
     [geoGranada, geoGranadaMao, geoFumaca, geoChama, geoGarrafa, geoGargalo, geoPano].forEach((g) => g.dispose());

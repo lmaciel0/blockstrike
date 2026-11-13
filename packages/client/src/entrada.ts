@@ -3,27 +3,49 @@
  * Só toca no DOM aqui; o comando devolvido é um objeto simples.
  */
 
+import type { Comandos, SlotPedido } from '@blockstrike/sim';
+
+/** Entrada do jogador: o que o loop e o HUD usam do teclado/mouse. */
+export interface Entrada {
+  comando(yawAtual: number, pitchAtual: number): Comandos;
+  travar(): void;
+  soltarCursor(): void;
+  liberarClique(): void;
+  cursorSolto(): boolean;
+  travado(): boolean;
+  aoPerderTrava(fn: () => void): void;
+  aoTab(fn: (aberto: boolean) => void): void;
+  /** Devolver `true` marca a tecla como usada pelo jogo (descarta a troca de arma pendente). */
+  aoTecla(fn: (codigo: string) => boolean | void): void;
+  ativar(valor: boolean): void;
+  definirSensibilidade(n: number): void;
+  definirFatorMira(f: number): void;
+  destruir(): void;
+}
+
 const SENS_MIN = 0.2;
 const SENS_MAX = 3;
 const RAD_POR_PIXEL = 0.002;
-const SLOTS = { Digit1: 'primaria', Digit2: 'pistola', Digit3: 'faca', Digit4: 'granada', KeyQ: 'anterior' }; // Q: última arma
+const SLOTS: Readonly<Record<string, SlotPedido>> = {
+  Digit1: 'primaria', Digit2: 'pistola', Digit3: 'faca', Digit4: 'granada', KeyQ: 'anterior', // Q: última arma
+};
 const BLOQUEADAS = new Set(['Tab', 'Space']);
 
-export function criarEntrada(canvas, { sensibilidade = 1 } = {}) {
+export function criarEntrada(canvas: HTMLCanvasElement, { sensibilidade = 1 }: { sensibilidade?: number } = {}): Entrada {
   const doc = canvas.ownerDocument;
-  const teclas = new Set();
-  const botoes = new Set();
+  const teclas = new Set<string>();
+  const botoes = new Set<number>();
   let sens = Math.max(SENS_MIN, Math.min(SENS_MAX, sensibilidade));
   let fatorMira = 1; // luneta aberta: o giro encolhe junto com o campo de visão
   let dYaw = 0; // giro do mouse acumulado desde o último comando
   let dPitch = 0;
-  let slotPendente = null;
+  let slotPendente: SlotPedido | null = null;
   let recarregarPendente = false;
   let ativa = true; // pausado/em outra tela: não captura teclas do resto do hub
   let cursorLivre = false; // soltou o mouse de propósito (B na compra): perder a trava não pausa nem retrava
   let aoPerder = () => {};
-  let aoTabFn = () => {};
-  let aoTeclaFn = () => {};
+  let aoTabFn: (aberto: boolean) => void = () => {};
+  let aoTeclaFn: (codigo: string) => boolean | void = () => {};
 
   const limpar = () => {
     teclas.clear();
@@ -32,7 +54,7 @@ export function criarEntrada(canvas, { sensibilidade = 1 } = {}) {
     dPitch = 0;
   };
 
-  function onKeyDown(e) {
+  function onKeyDown(e: KeyboardEvent) {
     if (!ativa) return;
     if (BLOQUEADAS.has(e.code)) e.preventDefault();
     if (e.repeat) return;
@@ -43,14 +65,14 @@ export function criarEntrada(canvas, { sensibilidade = 1 } = {}) {
     if (aoTeclaFn(e.code) === true) slotPendente = null; // tecla usada pelo jogo (painel de armas)
   }
 
-  function onKeyUp(e) {
+  function onKeyUp(e: KeyboardEvent) {
     teclas.delete(e.code);
     if (!ativa) return;
     if (BLOQUEADAS.has(e.code)) e.preventDefault();
     if (e.code === 'Tab') aoTabFn(false);
   }
 
-  function onMouseMove(e) {
+  function onMouseMove(e: MouseEvent) {
     if (doc.pointerLockElement !== canvas) return;
     dYaw -= e.movementX * sens * fatorMira * RAD_POR_PIXEL;
     dPitch -= e.movementY * sens * fatorMira * RAD_POR_PIXEL;
@@ -59,7 +81,8 @@ export function criarEntrada(canvas, { sensibilidade = 1 } = {}) {
   function travar() {
     cursorLivre = false;
     try {
-      const p = canvas.requestPointerLock();
+      // Navegadores antigos devolvem `undefined` em vez de Promise.
+      const p = canvas.requestPointerLock() as Promise<void> | undefined;
       if (p && typeof p.catch === 'function') p.catch(() => {});
     } catch {
       // sem pointer lock (headless): o jogo segue sem mira por mouse
@@ -73,17 +96,17 @@ export function criarEntrada(canvas, { sensibilidade = 1 } = {}) {
     doc.exitPointerLock();
   }
 
-  function onMouseDown(e) {
+  function onMouseDown(e: MouseEvent) {
     if (doc.pointerLockElement === canvas) botoes.add(e.button);
     else if (ativa && !cursorLivre && e.target === canvas) travar(); // retrava com um clique no jogo
   }
 
-  function onMouseUp(e) {
+  function onMouseUp(e: MouseEvent) {
     botoes.delete(e.button);
   }
 
   // Roda do mouse troca de arma (ordem primária → pistola → faca).
-  function onWheel(e) {
+  function onWheel(e: WheelEvent) {
     if (doc.pointerLockElement !== canvas || !ativa) return;
     e.preventDefault();
     if (e.deltaY !== 0) slotPendente = e.deltaY > 0 ? 'roda+' : 'roda-';
@@ -101,7 +124,7 @@ export function criarEntrada(canvas, { sensibilidade = 1 } = {}) {
     aoPerder();
   }
 
-  const onContext = (e) => e.preventDefault();
+  const onContext = (e: Event) => e.preventDefault();
   const onBlur = limpar;
 
   doc.addEventListener('keydown', onKeyDown);
@@ -115,7 +138,7 @@ export function criarEntrada(canvas, { sensibilidade = 1 } = {}) {
   canvas.addEventListener('wheel', onWheel, { passive: false });
   canvas.ownerDocument.defaultView?.addEventListener('blur', onBlur);
 
-  const eixo = (mais, menos) => (teclas.has(mais) ? 1 : 0) - (teclas.has(menos) ? 1 : 0);
+  const eixo = (mais: string, menos: string): number => (teclas.has(mais) ? 1 : 0) - (teclas.has(menos) ? 1 : 0);
 
   return {
     comando(yawAtual, pitchAtual) {
@@ -123,7 +146,7 @@ export function criarEntrada(canvas, { sensibilidade = 1 } = {}) {
       const pitch = Math.max(-1.5, Math.min(1.5, pitchAtual + dPitch));
       dYaw = 0;
       dPitch = 0;
-      const cmd = {
+      const cmd: Comandos = {
         frente: eixo('KeyW', 'KeyS'),
         lado: eixo('KeyD', 'KeyA'),
         pular: teclas.has('Space'),

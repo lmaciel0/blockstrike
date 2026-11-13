@@ -4,6 +4,9 @@
  * não toca em window/document. Tudo é agendado no relógio do áudio, sem setTimeout.
  */
 
+import type { TipoArma, TipoArmaDeFogo, TipoAcaoBomba } from '@blockstrike/sim';
+import type { AudioPort } from './portas';
+
 const DIST_AUDIVEL = 70; // metros até o som sumir
 const REF_DIST = 10; // até aqui o volume cai pouco
 const CORTE_PERTO = 16000; // Hz do passa-baixa para sons perto; longe fica abafado
@@ -11,7 +14,11 @@ const CORTE_LONGE = 900;
 
 // Tiro em três camadas: estalo (ruído agudo), corpo (ruído grave) e soco (seno que despenca).
 // estalo/corpo: [freq Hz, duração s, ganho]; soco: [freq inicial, freq final, duração, ganho].
-const TIROS = {
+type CamadaRuido = readonly [freq: number, dur: number, ganho: number];
+type CamadaSoco = readonly [freqInicial: number, freqFinal: number, dur: number, ganho: number];
+interface PerfilTiro { estalo: CamadaRuido; corpo: CamadaRuido; soco: CamadaSoco }
+
+const TIROS: Partial<Record<TipoArma, PerfilTiro>> & { rifle: PerfilTiro } = {
   rifle: { estalo: [2600, 0.07, 0.55], corpo: [900, 0.24, 0.6], soco: [150, 45, 0.12, 0.7] },
   smg: { estalo: [3300, 0.05, 0.42], corpo: [1300, 0.15, 0.45], soco: [180, 60, 0.08, 0.5] },
   sniper: { estalo: [2000, 0.12, 0.75], corpo: [600, 0.65, 0.85], soco: [110, 32, 0.26, 0.95] },
@@ -25,21 +32,32 @@ const TIROS = {
 };
 
 // Atenuação por distância: quase cheio até REF_DIST e zero em DIST_AUDIVEL.
-export function ganhoDistancia(d) {
+export function ganhoDistancia(d: number): number {
   if (d >= DIST_AUDIVEL) return 0;
   const queda = REF_DIST / (REF_DIST + Math.max(0, d - REF_DIST) * 0.6);
   return queda * (1 - d / DIST_AUDIVEL);
 }
 
-export function criarSons(audio) {
-  let ctx = null;
-  let mestre = null;
-  let ruido = null;
+/** Uma voz em andamento: nó de entrada já ligado ao mestre e o relógio do áudio no começo do som. */
+interface Voz { c: AudioContext; entrada: GainNode; t0: number }
+
+interface OpcoesVoz { distancia?: number; pan?: number; ganho?: number }
+
+interface OpcoesChiado {
+  tipo?: BiquadFilterType; freq: number; freqFim?: number; q?: number; dur: number; ganho: number; ataque?: number;
+}
+
+interface OpcoesTom { onda?: OscillatorType; freq: number; freqFim?: number; dur: number; ganho: number; ataque?: number }
+
+export function criarSons(audio: AudioPort) {
+  let ctx: AudioContext | null = null;
+  let mestre: GainNode | null = null;
+  let ruido: AudioBuffer | null = null;
   let volume = 0.8;
 
   // Liga a cadeia na primeira vez (ou quando o core recria o contexto): mestre → compressor → saída.
   function pronto() {
-    const c = audio.contexto?.() ?? null;
+    const c = audio.contexto();
     if (!c) return null;
     if (c !== ctx) {
       ctx = c;
@@ -51,15 +69,16 @@ export function criarSons(audio) {
       mestre.connect(comp);
       comp.connect(c.destination);
       const n = Math.floor(c.sampleRate * 2);
-      ruido = c.createBuffer(1, n, c.sampleRate);
-      const dados = ruido.getChannelData(0);
+      const buffer = c.createBuffer(1, n, c.sampleRate);
+      ruido = buffer;
+      const dados = buffer.getChannelData(0);
       for (let i = 0; i < n; i++) dados[i] = Math.random() * 2 - 1;
     }
     return ctx;
   }
 
   // Entrada de uma voz: ganho → passa-baixa (distância) → pan → mestre. null se inaudível.
-  function voz({ distancia = 0, pan = 0, ganho = 1 } = {}) {
+  function voz({ distancia = 0, pan = 0, ganho = 1 }: OpcoesVoz = {}): Voz | null {
     const c = pronto();
     if (!c) return null;
     const g = ganho * ganhoDistancia(distancia);
@@ -71,25 +90,25 @@ export function criarSons(audio) {
     const t = Math.min(1, distancia / 45);
     filtro.frequency.value = CORTE_PERTO * (1 - t) + CORTE_LONGE * t;
     entrada.connect(filtro);
-    let ultimo = filtro;
+    let ultimo: AudioNode = filtro;
     if (pan !== 0 && c.createStereoPanner) {
       const p = c.createStereoPanner();
       p.pan.value = Math.max(-1, Math.min(1, pan));
       ultimo.connect(p);
       ultimo = p;
     }
-    ultimo.connect(mestre);
+    if (mestre) ultimo.connect(mestre);
     return { c, entrada, t0: c.currentTime };
   }
 
-  function envelope(param, t, ataque, dur, pico) {
+  function envelope(param: AudioParam, t: number, ataque: number, dur: number, pico: number): void {
     param.setValueAtTime(0.0001, t);
     param.linearRampToValueAtTime(pico, t + ataque);
     param.exponentialRampToValueAtTime(0.0001, t + dur);
   }
 
   // Rajada de ruído filtrado. tipo: lowpass | highpass | bandpass; freqFim varre o filtro.
-  function chiado(v, t, { tipo = 'bandpass', freq, freqFim, q = 1, dur, ganho, ataque = 0.002 }) {
+  function chiado(v: Voz, t: number, { tipo = 'bandpass', freq, freqFim, q = 1, dur, ganho, ataque = 0.002 }: OpcoesChiado): void {
     const { c, entrada } = v;
     const fonte = c.createBufferSource();
     fonte.buffer = ruido;
@@ -107,7 +126,7 @@ export function criarSons(audio) {
     fonte.stop(t + dur + 0.02);
   }
 
-  function tom(v, t, { onda = 'sine', freq, freqFim, dur, ganho, ataque = 0.002 }) {
+  function tom(v: Voz, t: number, { onda = 'sine', freq, freqFim, dur, ganho, ataque = 0.002 }: OpcoesTom): void {
     const { c, entrada } = v;
     const o = c.createOscillator();
     o.type = onda;
@@ -122,20 +141,20 @@ export function criarSons(audio) {
   }
 
   // Clique mecânico (peça de metal): ruído agudo curtíssimo mais um tom metálico.
-  function clique(v, t, freq = 2400, ganho = 0.35) {
+  function clique(v: Voz, t: number, freq = 2400, ganho = 0.35): void {
     chiado(v, t, { tipo: 'bandpass', freq, q: 6, dur: 0.03, ganho });
     tom(v, t, { onda: 'square', freq: freq / 3, dur: 0.025, ganho: ganho * 0.25 });
   }
 
-  const varia = (x, p = 0.06) => x * (1 + (Math.random() * 2 - 1) * p);
+  const varia = (x: number, p = 0.06): number => x * (1 + (Math.random() * 2 - 1) * p);
 
   return {
-    definirVolume(n) {
+    definirVolume(n: number) {
       volume = Math.max(0, Math.min(1, n));
       if (mestre) mestre.gain.value = volume;
     },
 
-    tiro(tipo, distancia = 0, pan = 0) {
+    tiro(tipo: TipoArmaDeFogo, distancia = 0, pan = 0) {
       const d = TIROS[tipo] ?? TIROS.rifle;
       const v = voz({ distancia, pan });
       if (!v) return;
@@ -169,7 +188,7 @@ export function criarSons(audio) {
     },
 
     // Hitmarker: estalinho seco. Cabeça: o "dink" metálico do capacete.
-    acerto(cabeca) {
+    acerto(cabeca: boolean) {
       const v = voz({ ganho: 0.6 });
       if (!v) return;
       if (cabeca) {
@@ -202,7 +221,7 @@ export function criarSons(audio) {
     },
 
     // Abate confirmado (o jogador matou): dois toques curtos e brilhantes.
-    abate(cabeca) {
+    abate(cabeca: boolean) {
       const v = voz({ ganho: 0.4 });
       if (!v) return;
       tom(v, v.t0 + 0.05, { onda: 'triangle', freq: cabeca ? 1320 : 990, dur: 0.12, ganho: 0.35 });
@@ -313,7 +332,7 @@ export function criarSons(audio) {
     },
 
     // Começou a plantar (três bipes rápidos) ou a desarmar (cliques descendo).
-    acaoC4(acao, distancia = 0, pan = 0) {
+    acaoC4(acao: TipoAcaoBomba, distancia = 0, pan = 0) {
       const v = voz({ distancia, pan, ganho: 0.6 });
       if (!v) return;
       if (acao === 'plantar') {
@@ -373,7 +392,7 @@ export function criarSons(audio) {
       if (v) tom(v, v.t0, { onda: 'square', freq: 1500, dur: 0.06, ganho: 0.15 });
     },
 
-    fimRound(venceu) {
+    fimRound(venceu: boolean) {
       const v = voz({ ganho: 0.5 });
       if (!v) return;
       const notas = venceu ? [523, 659, 784, 1047] : [440, 370, 311, 262];
@@ -407,7 +426,7 @@ export function criarSons(audio) {
     },
 
     // Sacar a arma: pano raspando e um clique.
-    saque(tipo) {
+    saque(tipo: TipoArma) {
       const v = voz({ ganho: 0.5 });
       if (!v) return;
       if (tipo === 'faca') {
@@ -419,7 +438,7 @@ export function criarSons(audio) {
     },
 
     // Faca: zunido do golpe; acerto no corpo é um baque, na parede um tinido.
-    golpe(forte, acerto, distancia = 0, pan = 0) {
+    golpe(forte: boolean, acerto: 'corpo' | 'parede' | null, distancia = 0, pan = 0) {
       const v = voz({ distancia, pan, ganho: 0.7 });
       if (!v) return;
       const t = v.t0;

@@ -1,0 +1,9 @@
+{
+  // Usado só pelo `typecheck` do Vitest: cobre os testes dos dois pacotes (o do sim sem DOM, o do cliente com DOM).
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "noEmit": true
+  },
+  "include": ["packages/*/src", "packages/*/test"]
+}
