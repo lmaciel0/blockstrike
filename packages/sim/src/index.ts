@@ -13,6 +13,11 @@ export {
   NOMES_BOTS, ORDEM_GRANADAS, RECUO_MAX, ROUND, familia,
 } from './config.js';
 
+// Passo fixo: taxa da simulação, duração de um passo, teto de passos por quadro e o relógio que os conta.
+export { DT_SIM, MAX_PASSOS_POR_QUADRO, TICK_HZ } from './config.js';
+export { criarRelogio } from './relogio.js';
+export type { Relogio } from './relogio.js';
+
 // Acaso com seed e o mapa.
 export { criarRng } from './rng.js';
 export { MAPA } from './mapa.js';

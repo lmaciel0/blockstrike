@@ -851,7 +851,10 @@ export function criarRender(canvas: HTMLCanvasElement, mapa: Mapa) {
     view.boca.visible = clarao > 0;
   }
 
-  function desenhar(mundo: Mundo, idVista: number, { zoomFov }: { zoomFov?: number } = {}) {
+  // `alfa`: fração [0, 1) do passo de simulação em curso (relógio de passo fixo). É recebido mas AINDA NÃO é
+  // usado: interpolar pede o estado do passo anterior de cada entidade, e o render só guarda o estado atual.
+  // Por ora a cena mostra sempre o último passo simulado; em tela acima de `TICK_HZ` alguns quadros a repetem.
+  function desenhar(mundo: Mundo, idVista: number, { zoomFov }: { zoomFov?: number; alfa?: number } = {}) {
     const agora = performance.now();
     const dt = Math.min((agora - ultimo) / 1000, 0.1);
     ultimo = agora;

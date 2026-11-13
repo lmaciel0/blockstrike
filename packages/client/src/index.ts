@@ -10,7 +10,7 @@ import {
   DIFICULDADE, ECONOMIA, FOV_PADRAO, familia, olho, direcao, visadaLivre, granadasDe, criarArma,
   calcularSpread, velocidadeDe, criarGrafo, criarCerebro, pensar, criarPartida, ladoAzul, tickPartida,
   criarBomba, acaoPossivel, iniciarEconomia, resetarEconomia, premiarRound, botComprar, comprar,
-  estadoCompra,
+  estadoCompra, criarRelogio, DT_SIM, MAX_PASSOS_POR_QUADRO, TICK_HZ,
 } from '@blockstrike/sim';
 import { criarEntradaTecladoMouse } from './entrada';
 import { criarSons } from './sons';
@@ -18,13 +18,16 @@ import { criarHud } from './hud';
 import { lerMira } from './mira';
 import { contarEventos, contarPartida, lerCarreira, novaCarreira, resumoCarreira } from './carreira';
 import type {
-  Entidade, Evento, EventoPartida, Grafo, IdItem, Mao, Mundo, NomeDificuldade, Partida, Rng, Site, Time, TipoArma, TipoPrimaria, Vec3, Comandos, Slot,
+  Entidade, Evento, EventoPartida, Grafo, IdItem, Mao, Mundo, NomeDificuldade, Partida, Rng, Site, Time, TipoArma, TipoPrimaria, Vec3, Comandos, Slot, Relogio,
 } from '@blockstrike/sim';
 import type { Portas, StoragePort } from './portas';
 import type { ConfigJogo, EstadoBombaHud, ModoJogo, TamanhoPalco, VistaHud } from './hud';
 import type { EntradaTecladoMouse } from './entrada';
 
-const DT_MAX = 0.05;
+// Teto do tempo real de um quadro entregue ao relógio de passo fixo (s). Um quadro mais longo que isto
+// (aba que voltou do segundo plano) conta como 0,25 s; o relógio ainda corta em `MAX_PASSOS_POR_QUADRO`
+// passos e descarta o resto, então o jogo não dispara para alcançar o tempo perdido.
+const DT_REAL_MAX = 0.25;
 const FOGO_AVISO = 0.5; // s entre hitmarkers/dor do mesmo par atacante→vítima no fogo
 const AVISTAR_A_CADA = 0.25; // s entre recálculos dos inimigos avistados (radar)
 const ALCANCE_AVISTAR = 50;
@@ -165,8 +168,12 @@ interface PartidaAtiva {
   proxBip: number;
   idVista: number;
   cliqueAntes: boolean;
+  /** Luneta pedida no último passo da simulação (o quadro sem passo desenha com o mesmo valor). */
+  zoom: boolean;
   raf: number | null;
   antes: number;
+  /** Passo fixo: converte o tempo real de cada quadro em passos de `DT_SIM`. */
+  relogio: Relogio;
   lock: { travou: boolean };
   pausado: boolean;
   desligarTrava: () => void;
@@ -601,7 +608,7 @@ function montar(raiz: HTMLElement, portas: Portas): InstanciaJogo {
   }
 
   // Dados do HUD para este frame: vida e arma são de quem está sendo visto (o jogador ou o aliado assistido).
-  function estadoVisivel(p: PartidaAtiva, cmd: Comandos): VistaHud {
+  function estadoVisivel(p: PartidaAtiva, zoom: boolean): VistaHud {
     const { mundo, partida: regras } = p;
     const eu = mundo.entidades[mundo.jogadorId];
     const alvo = mundo.entidades[p.idVista];
@@ -609,7 +616,7 @@ function montar(raiz: HTMLElement, portas: Portas): InstanciaJogo {
     let spread = 0;
     if (arma && eu.vivo) {
       spread = calcularSpread(ARMAS[arma.tipo], {
-        velHoriz: alvo.velHoriz, velMax: velocidadeDe(arma.tipo), noChao: alvo.noChao, agachado: alvo.agachado, zoom: cmd.zoom,
+        velHoriz: alvo.velHoriz, velMax: velocidadeDe(arma.tipo), noChao: alvo.noChao, agachado: alvo.agachado, zoom,
       }) + arma.recuoAcum;
     }
     const def = arma ? ARMAS[arma.tipo] : null;
@@ -629,7 +636,7 @@ function montar(raiz: HTMLElement, portas: Portas): InstanciaJogo {
       hp: alvo.hp, vivo: eu.vivo, arma: arma && def && (arma.tipo === 'granada'
         ? { tipo: 'granada', sel: (arma as Mao).sel, n: (arma as Mao).sel ? granadasDe(mundo, alvo)[(arma as Mao).sel!] : 0 }
         : { ...arma, tipo: arma.tipo as Exclude<TipoArma, 'granada'>, pente: def.pente }), spread, progressoRecarga,
-      luneta: eu.vivo && Boolean(cmd.zoom && def?.zoomFov),
+      luneta: eu.vivo && Boolean(zoom && def?.zoomFov),
       loadout: p.treino && p.loadoutAberto, modo: p.treino ? 'treino' : 'partida',
       vencedorRound: regras.vencedorRound, motivo: regras.motivo, mvp: p.mvp ?? null,
       espectando: eu.vivo ? null : alvo.nome, entidades: mundo.entidades,
@@ -639,11 +646,11 @@ function montar(raiz: HTMLElement, portas: Portas): InstanciaJogo {
     };
   }
 
-  function quadro(agora: number) {
-    const p = partida;
-    if (!p) return; // o quadro já agendado chegou depois de a partida acabar
-    const dt = Math.min((agora - p.antes) / 1000, DT_MAX);
-    p.antes = agora;
+  // Um passo fixo da simulação (`DT_SIM`): lê a entrada, os bots pensam, o mundo anda e as regras contam o tempo.
+  // Roda zero ou mais vezes por quadro, conforme o relógio. A entrada é lida a cada passo: o giro do mouse e os
+  // pedidos de um toque (recarregar, trocar de slot) ficam guardados até haver um passo para consumi-los.
+  function passoSim(p: PartidaAtiva) {
+    const dt = DT_SIM;
     const { mundo, partida: regras } = p;
     const jogador = mundo.entidades[mundo.jogadorId];
     const cmd = p.entrada.comando(jogador.yaw, jogador.pitch);
@@ -682,16 +689,30 @@ function montar(raiz: HTMLElement, portas: Portas): InstanciaJogo {
       p.idVista = proximaVista(mundo, p.idVista);
     }
     p.cliqueAntes = cmd.atirar;
-    const armaAtual = jogador.armas?.[jogador.slot];
-    const zoomFov = cmd.zoom && jogador.vivo && armaAtual ? ARMAS[armaAtual.tipo].zoomFov : undefined;
-    p.entrada.definirFatorMira(zoomFov ? fatorLuneta(zoomFov, cfg.sensLuneta) : 1);
-    p.render.desenhar(mundo, p.idVista, { zoomFov });
-    hud.atualizar(estadoVisivel(p, cmd));
+    p.zoom = Boolean(cmd.zoom);
     p.avistarEm -= dt;
     if (p.avistarEm <= 0) {
       p.avistarEm = AVISTAR_A_CADA;
       avistar(p);
     }
+  }
+
+  function quadro(agora: number) {
+    const p = partida;
+    if (!p) return; // o quadro já agendado chegou depois de a partida acabar
+    const dtReal = (agora - p.antes) / 1000;
+    p.antes = agora;
+    // Passo fixo: a simulação anda só em passos de `DT_SIM`. O quadro pode rodar nenhum (tela mais rápida que
+    // `TICK_HZ`) ou vários (quadro lento), até o teto; o atraso acima do teto é descartado pelo relógio.
+    const passos = p.relogio.avancar(Math.min(dtReal, DT_REAL_MAX));
+    for (let i = 0; i < passos && partida === p; i++) passoSim(p);
+    const { mundo, partida: regras } = p;
+    const jogador = mundo.entidades[mundo.jogadorId];
+    const armaAtual = jogador.armas?.[jogador.slot];
+    const zoomFov = p.zoom && jogador.vivo && armaAtual ? ARMAS[armaAtual.tipo].zoomFov : undefined;
+    p.entrada.definirFatorMira(zoomFov ? fatorLuneta(zoomFov, cfg.sensLuneta) : 1);
+    p.render.desenhar(mundo, p.idVista, { zoomFov, alfa: p.relogio.alfa() });
+    hud.atualizar(estadoVisivel(p, p.zoom));
     const vista = mundo.entidades[p.idVista];
     hud.radar({
       caixas: MAPA.caixas, eu: vista, entidades: mundo.entidades, avistados: p.avistados,
@@ -857,7 +878,8 @@ function montar(raiz: HTMLElement, portas: Portas): InstanciaJogo {
       partida = {
         mundo, render, entrada, grafo, rngBots, partida: regrasIniciais, treino,
         loadoutAberto: false, ultimoTiro: new Map(), avisoFogo: new Map(), avistados: new Set(), avistarEm: 0, proxBip: 0,
-        idVista: mundo.jogadorId, cliqueAntes: false, raf: null, antes: 0, lock, pausado: false,
+        idVista: mundo.jogadorId, cliqueAntes: false, zoom: false, raf: null, antes: 0, lock, pausado: false,
+        relogio: criarRelogio(TICK_HZ, MAX_PASSOS_POR_QUADRO),
         desligarTrava: () => document.removeEventListener('pointerlockchange', aoTravar),
       };
       hud.esconderMenu();

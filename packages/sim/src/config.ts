@@ -7,6 +7,13 @@ import type {
   Dificuldade, DefArma, IdItem, ItemLoja, NomeDificuldade, ParteCorpo, TipoArma, TipoGranada,
 } from './tipos.js';
 
+// Passo fixo da simulação: o mundo anda sempre de `DT_SIM` em `DT_SIM`, seja qual for a taxa de quadros.
+// `TICK_HZ` é provisório: o netcode (Plano 3) pode mudar a taxa.
+export const TICK_HZ = 60;
+export const DT_SIM = 1 / TICK_HZ; // segundos por passo
+// Teto de passos por quadro: o atraso acima disto é descartado pelo relógio (ver `relogio.ts`).
+export const MAX_PASSOS_POR_QUADRO = 5;
+
 export const JOGADOR = {
   raio: 0.35,
   altura: 1.8,

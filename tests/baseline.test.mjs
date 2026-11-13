@@ -18,6 +18,10 @@ test('resumoPartida: dt fixo é determinístico e bem formado', async () => {
   assert.ok(a.cabecas <= a.mortes);
   assert.ok(Number.isInteger(a.presos) && a.presos >= 0);
   assert.ok(Array.isArray(a.dinheiroFinal) && a.dinheiroFinal.length > 0);
+  // Vitórias por papel: todo round com vencedor conta para T ou para CT, e o placar por time soma o mesmo.
+  assert.ok(Number.isInteger(a.vitoriasT) && Number.isInteger(a.vitoriasCT));
+  assert.equal(a.vitoriasT + a.vitoriasCT, a.placar.azul + a.placar.laranja);
+  assert.ok(a.vitoriasT + a.vitoriasCT <= a.rounds);
 });
 
 test('resumoPartida: dt variável é determinístico pela seed', async () => {
@@ -28,6 +32,16 @@ test('resumoPartida: dt variável é determinístico pela seed', async () => {
   assert.ok(a.rounds >= 13, `rounds=${a.rounds}`);
 });
 
+test('resumoPartida: relógio de passo fixo termina a partida e difere do dt variável só no passo', async () => {
+  const a = await resumoPartida(carregar, 'facil', 2, { modo: 'relogio', seed: 2 });
+  assert.match(a.hash, /^[0-9a-f]{8}$/);
+  assert.ok(a.rounds >= 13 && a.rounds <= 24, `rounds=${a.rounds}`);
+  assert.ok(a.mortes > 0);
+  assert.equal(a.vitoriasT + a.vitoriasCT, a.placar.azul + a.placar.laranja);
+});
+
+// Regenera as seeds 1..5 com `--dt=relogio` e confere byte a byte com tools/baseline/ts-relogio.json:
+// é o que garante que o passo fixo segue determinístico (mesma seed, mesma partida).
 test('baseline:check imprime IDENTICO', { timeout: 900_000 }, () => {
   const saida = execFileSync('npm', ['run', '--silent', 'baseline:check'], {
     cwd: process.env.REPO ?? process.cwd(),

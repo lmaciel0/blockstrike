@@ -9,6 +9,8 @@ const PUBLICO = [
   // config
   'ARMAS', 'BOMBA', 'COLETE', 'DIFICULDADE', 'ECONOMIA', 'FOV_PADRAO', 'GRANADA', 'ITENS', 'JOGADOR',
   'MAX_GRANADAS', 'MULT_PARTE', 'NOMES_BOTS', 'ORDEM_GRANADAS', 'RECUO_MAX', 'ROUND', 'familia',
+  // passo fixo: config e relogio
+  'DT_SIM', 'MAX_PASSOS_POR_QUADRO', 'TICK_HZ', 'criarRelogio',
   // rng, mapa
   'criarRng', 'MAPA',
   // fisica

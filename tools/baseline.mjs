@@ -1,6 +1,8 @@
 // Baseline determinístico do sim: roda partidas completas só de bots (laço de bs-sim-partida.mjs, com economia,
 // compra, C4 e granadas) e resume cada uma. Tudo deriva de seeds — sem Math.random nem Date.now no caminho.
-// uso: npx tsx tools/baseline.mjs --out=<arquivo> [--seeds=1..5] [--dt=fixo|variavel]
+// uso: npx tsx tools/baseline.mjs --out=<arquivo> [--seeds=1..5] [--dt=fixo|variavel|relogio]
+// --dt=relogio: os mesmos dt reais sorteados do modo `variavel` alimentam o relógio de passo fixo
+// (`criarRelogio`), e a simulação roda `DT_SIM` por passo devolvido. É o laço do cliente.
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { mod } from '../tests/_repo.mjs';
@@ -8,6 +10,7 @@ import { mod } from '../tests/_repo.mjs';
 const DT_FIXO = 1 / 60;
 const DT_MIN = 1 / 144;
 const DT_MAX = 0.05; // teto atual de index.js (DT_MAX)
+const DT_REAL_MAX = 0.25; // teto do dt real entregue ao relógio (o mesmo do laço do cliente)
 const LIMITE_PASSOS = 2_000_000;
 const DIFICULDADES = ['facil', 'medio', 'dificil'];
 
@@ -55,6 +58,7 @@ function fnv1a(texto) {
  * Roda uma partida completa e devolve o resumo.
  * @param carregar (nome) => módulo do sim (mundo, bots, rounds, navegacao, mapa, config, rng, fisica, economia, bomba)
  * @param opcoesDt { modo: 'fixo', dt } | { modo: 'variavel', seed } (variável: dt sorteado em [1/144, 0.05])
+ *   | { modo: 'relogio', seed } (os mesmos dt do `variavel` passam pelo relógio; a simulação anda em DT_SIM)
  */
 export async function resumoPartida(carregar, dificuldade, seed, opcoesDt) {
   const { criarMundo, posicionarParaRound, passo, vivosPorTime } = await carregar('mundo');
@@ -65,13 +69,16 @@ export async function resumoPartida(carregar, dificuldade, seed, opcoesDt) {
   const E = await carregar('economia');
   const { MAPA } = await carregar('mapa');
   const { criarRng } = await carregar('rng');
-  const { ECONOMIA } = await carregar('config');
+  const { ECONOMIA, TICK_HZ, DT_SIM, MAX_PASSOS_POR_QUADRO } = await carregar('config');
+  const { criarRelogio } = await carregar('relogio');
 
   const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade, rng: criarRng(seed) });
   mundo.entidades[0].bot = true;
   E.iniciarEconomia(mundo);
   const rngBots = criarRng(seed * 77);
-  const rngDt = opcoesDt.modo === 'variavel' ? criarRng(opcoesDt.seed) : null;
+  // `relogio` sorteia os dt reais com a mesma seed do `variavel`: a sequência é idêntica nos dois modos.
+  const rngDt = opcoesDt.modo === 'variavel' || opcoesDt.modo === 'relogio' ? criarRng(opcoesDt.seed) : null;
+  const relogio = opcoesDt.modo === 'relogio' ? criarRelogio(TICK_HZ, MAX_PASSOS_POR_QUADRO) : null;
   const proximoDt = () => (rngDt ? DT_MIN + rngDt() * (DT_MAX - DT_MIN) : opcoesDt.dt);
   const grafo = criarGrafo(MAPA.waypoints, MAPA.arestas);
   const p = criarPartida({ freeze: ECONOMIA.freezeCompra });
@@ -88,10 +95,13 @@ export async function resumoPartida(carregar, dificuldade, seed, opcoesDt) {
   const sequencia = [];
   let mortes = 0;
   let cabecas = 0;
+  // Vitórias por papel (não por time: azul e laranja trocam de lado no intervalo).
+  let vitoriasT = 0;
+  let vitoriasCT = 0;
   let n = 0;
-  while (p.fase !== 'fim-partida') {
+  // Um passo da simulação com o `dt` dado: bots pensam, o mundo anda e as regras da partida contam o tempo.
+  function umPasso(dt) {
     if (n >= LIMITE_PASSOS) throw new Error(`partida não terminou em ${LIMITE_PASSOS} passos (seed=${seed} ${dificuldade})`);
-    const dt = proximoDt();
     const jogando = p.fase !== 'freeze';
     const cmds = new Map();
     if (jogando) for (const e of mundo.entidades) if (e.vivo) cmds.set(e.id, pensar(e, mundo, grafo, dificuldade, dt, rngBots));
@@ -112,15 +122,34 @@ export async function resumoPartida(carregar, dificuldade, seed, opcoesDt) {
     const eventos = tickPartida(p, dt, vivosPorTime(mundo), mundo.bomba);
     if (eventos.includes('troca-lados')) E.resetarEconomia(mundo, p);
     for (const x of eventos) {
-      if (x === 'fim-round') E.premiarRound(mundo, p, p.vencedorRound ?? null);
+      if (x === 'fim-round') {
+        // `p.terroristas` ainda é o do round que acabou (só muda no `novo-round`). Round sem vencedor não conta.
+        if (p.vencedorRound) {
+          if (p.vencedorRound === p.terroristas) vitoriasT++;
+          else vitoriasCT++;
+        }
+        E.premiarRound(mundo, p, p.vencedorRound ?? null);
+      }
       if (x === 'novo-round') novoRound();
     }
     n++;
+  }
+  while (p.fase !== 'fim-partida') {
+    const dtReal = proximoDt();
+    if (!relogio) {
+      umPasso(dtReal);
+      continue;
+    }
+    // Laço do cliente: o relógio diz quantos passos fixos cabem no tempo real do quadro.
+    const passos = relogio.avancar(Math.min(dtReal, DT_REAL_MAX));
+    for (let i = 0; i < passos && p.fase !== 'fim-partida'; i++) umPasso(DT_SIM);
   }
 
   return {
     rounds: p.round,
     placar: { azul: p.placar.azul, laranja: p.placar.laranja },
+    vitoriasT,
+    vitoriasCT,
     mortes,
     cabecas,
     presos: contarPresos(log),
@@ -142,10 +171,10 @@ function lerSeeds(texto) {
 async function principal(argv) {
   const arg = (nome, padrao) => argv.find((a) => a.startsWith(`--${nome}=`))?.slice(nome.length + 3) ?? padrao;
   const saida = arg('out');
-  if (!saida) throw new Error('uso: baseline.mjs --out=<arquivo> [--seeds=1..5] [--dt=fixo|variavel]');
+  if (!saida) throw new Error('uso: baseline.mjs --out=<arquivo> [--seeds=1..5] [--dt=fixo|variavel|relogio]');
   const seeds = lerSeeds(arg('seeds', '1..5'));
   const modo = arg('dt', 'fixo');
-  if (modo !== 'fixo' && modo !== 'variavel') throw new Error(`--dt inválido: ${modo}`);
+  if (modo !== 'fixo' && modo !== 'variavel' && modo !== 'relogio') throw new Error(`--dt inválido: ${modo}`);
   const carregar = (nome) => mod(`packages/sim/src/${nome}.js`);
   const partidas = [];
   for (const dificuldade of DIFICULDADES) {
@@ -154,7 +183,11 @@ async function principal(argv) {
       partidas.push({ dificuldade, seed, ...(await resumoPartida(carregar, dificuldade, seed, opcoesDt)) });
     }
   }
-  const dt = modo === 'fixo' ? { modo, dt: DT_FIXO } : { modo, min: DT_MIN, max: DT_MAX };
+  let dt = modo === 'fixo' ? { modo, dt: DT_FIXO } : { modo, min: DT_MIN, max: DT_MAX };
+  if (modo === 'relogio') {
+    const { TICK_HZ, MAX_PASSOS_POR_QUADRO } = await carregar('config');
+    dt = { ...dt, hz: TICK_HZ, maxPassos: MAX_PASSOS_POR_QUADRO, dtRealMax: DT_REAL_MAX };
+  }
   writeFileSync(saida, `${JSON.stringify({ dt, partidas }, null, 2)}\n`);
   console.log(`${partidas.length} partidas gravadas em ${saida}`);
 }
