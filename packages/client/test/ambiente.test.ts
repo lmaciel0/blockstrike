@@ -60,8 +60,11 @@ describe('ambiente sem condições de jogo', () => {
   it('chamar iniciar de novo na mesma raiz derruba a instância anterior', () => {
     simularPonteiro(true, false);
     const portas = criarPortas();
-    iniciar(raiz, portas);
-    iniciar(raiz, portas);
+    const anterior = iniciar(raiz, portas);
+    const destruirAnterior = vi.spyOn(anterior, 'destruir');
+    const nova = iniciar(raiz, portas);
+    expect(destruirAnterior).toHaveBeenCalledTimes(1);
+    expect(nova).not.toBe(anterior);
     expect(raiz.querySelectorAll('canvas')).toHaveLength(1);
   });
 });

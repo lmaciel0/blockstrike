@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { criarStorage } from '../src/portas.js';
 
 /** Backend falso com Map, para não depender de jsdom. */
@@ -24,6 +25,10 @@ function backendQueLanca(): Storage {
 }
 
 describe('criarStorage', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('backend que lança: não lança e guarda em memória', () => {
     const s = criarStorage('arcade:blockstrike:', backendQueLanca());
     expect(() => s.set('a', 1)).not.toThrow();
@@ -80,5 +85,24 @@ describe('criarStorage', () => {
     const s = criarStorage('p:');
     expect(() => s.set('a', 2)).not.toThrow();
     expect(s.get('a', 0)).toBe(2);
+  });
+
+  it('getter global de localStorage que lança SecurityError: não lança e usa memória', () => {
+    vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => {
+      throw new DOMException('bloqueado', 'SecurityError');
+    });
+    const s = criarStorage('p:');
+    expect(() => s.set('a', 3)).not.toThrow();
+    expect(s.get('a', 0)).toBe(3);
+  });
+
+  it('setItem falha com valor antigo no backend: o valor novo em memória vence', () => {
+    const b = backendEmMemoria({ 'p:k': '"velho"' });
+    b.setItem = () => {
+      throw new DOMException('cheio', 'QuotaExceededError');
+    };
+    const s = criarStorage('p:', b);
+    s.set('k', 'novo');
+    expect(s.get('k', 'padrao')).toBe('novo');
   });
 });

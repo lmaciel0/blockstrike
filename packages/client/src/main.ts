@@ -76,7 +76,7 @@ if (!raiz) throw new Error('#view-blockstrike ausente no index.html');
 
 const portas: Portas = {
   audio: criarAudio(),
-  storage: criarStorage('arcade:blockstrike:', localStorage),
+  storage: criarStorage('arcade:blockstrike:'),
   confetti: confete,
 };
 

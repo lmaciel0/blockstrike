@@ -44,9 +44,11 @@ export function criarStorage(prefixo: string, backend?: Storage): StoragePort {
   const ls = backend ?? backendPadrao();
   // Guarda o JSON serializado, para a leitura da memória passar pela mesma validação.
   const memoria = new Map<string, string>();
+  // Chaves cujo último `setItem` falhou: o backend pode ter valor antigo, então a memória manda.
+  const memoriaManda = new Set<string>();
 
   function lerBruto(chaveCompleta: string): string | null {
-    if (ls) {
+    if (ls && !memoriaManda.has(chaveCompleta)) {
       try {
         const bruto = ls.getItem(chaveCompleta);
         if (bruto !== null) return bruto;
@@ -81,8 +83,10 @@ export function criarStorage(prefixo: string, backend?: Storage): StoragePort {
       if (!ls) return;
       try {
         ls.setItem(chaveCompleta, json);
+        memoriaManda.delete(chaveCompleta);
       } catch {
-        // cota cheia ou bloqueado: a memória já tem o valor
+        // cota cheia ou bloqueado: a memória já tem o valor e passa a valer mais que o backend
+        memoriaManda.add(chaveCompleta);
       }
     },
   };
