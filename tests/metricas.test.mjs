@@ -6,11 +6,17 @@ const { criarColetor, GAP_ENCONTRO } = await mod('tools/metricas.mjs');
 const { resumoPartida } = await mod('tools/baseline.mjs');
 const carregar = (nome) => mod(`packages/sim/src/${nome}.js`);
 
-const bot = (alvoId) => ({ id: 1, vivo: true, cerebro: { alvoId, desencalhes: 0 } });
+const bot = (alvoId, percepcao = []) => ({ id: 1, vivo: true, cerebro: { alvoId, desencalhes: 0, percepcao } });
 const DT = 0.1;
-// Alimenta passos sintéticos: cada item é { alvoId, eventos }.
+// Alimenta passos sintéticos: cada item é { alvoId, eventos, fora }.
+// No sim o coletor roda depois de `passo()`: `t` é o tempo já avançado e a amostra de percepção deste passo
+// (`registrarVistos`) leva o tempo de antes dele, ou seja, o `t` do passo anterior. `fora: true` = alvo guardado
+// mas sem amostra nova neste passo (fora da visada).
 function alimentar(coletor, passos) {
-  passos.forEach((p, n) => coletor.passo({ n, t: n * DT, round: 1, entidades: [bot(p.alvoId)], eventos: p.eventos ?? [] }));
+  passos.forEach((p, n) => {
+    const percepcao = p.alvoId !== null && !p.fora ? [{ id: p.alvoId, t: (n - 1) * DT, pos: { x: 0, y: 0, z: 0 } }] : [];
+    coletor.passo({ n, t: n * DT, round: 1, entidades: [bot(p.alvoId, percepcao)], eventos: p.eventos ?? [] });
+  });
 }
 
 test('coletor: encontro com acerto mede o tempo desde que viu', () => {
@@ -119,6 +125,25 @@ test('coletor: alvo morto não conta como bot mudo', () => {
   alimentar(c, passos);
   c.fimRound([bot(7)]);
   assert.equal(c.resultado().botsMudos, 0);
+});
+
+test('coletor: alvo fora da visada não conta como bot mudo', () => {
+  // `alvoId` persiste um tempo depois de perder o alvo de vista: 4 s guardando alvo sem vê-lo não é bot mudo.
+  const c = criarColetor();
+  alimentar(c, Array.from({ length: 40 }, () => ({ alvoId: 7, fora: true })));
+  c.fimRound([bot(7)]);
+  assert.equal(c.resultado().botsMudos, 0);
+  assert.equal(c.resultado().encontros, 1, 'o encontro continua aberto: só o tempo mudo exige visada');
+
+  // Vê só 2 s dos 4 (abaixo de MUDO_MIN): também não é mudo; vendo 3,5 s é.
+  const d = criarColetor();
+  alimentar(d, Array.from({ length: 40 }, (_, i) => ({ alvoId: 7, fora: i % 2 === 0 || i >= 36 })));
+  d.fimRound([bot(7)]);
+  assert.equal(d.resultado().botsMudos, 0);
+  const e = criarColetor();
+  alimentar(e, Array.from({ length: 40 }, (_, i) => ({ alvoId: 7, fora: i < 4 })));
+  e.fimRound([bot(7)]);
+  assert.equal(e.resultado().botsMudos, 1);
 });
 
 test('coletor: soma desencalhes dos cérebros no fim do round, uma vez por cérebro', () => {

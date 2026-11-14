@@ -7,7 +7,12 @@
 // Um par só tem encontros em sequência, nunca sobrepostos.
 // Primeiro acerto: tempo do início do encontro até o primeiro evento `acerto` do bot nesse alvo, com o encontro aberto.
 // Encontro fechado sem acerto conta em `encontrosSemAcerto`.
-// Bot mudo: num round, >= 3 s com `alvoId` apontando para alvo ainda vivo e nenhum evento `tiro` dele.
+// Bot mudo: num round, >= 3 s com `alvoId` apontando para alvo ainda vivo E visto naquele passo, e nenhum evento
+// `tiro` dele. `alvoId` persiste depois de o alvo sumir de vista, então só o tempo com visada conta.
+// Visto no passo = o cérebro tem uma amostra de percepção desse alvo gravada neste passo (`registrarVistos`, que
+// roda em `pensar` com o tempo de antes do `passo()`; o coletor roda depois, com o tempo já avançado, então
+// a amostra deste passo tem `t` igual ao `t` do passo anterior do coletor). `perdidoHa === 0` não serve: o
+// cérebro só o incrementa em combate/posto e ele fica velho em cobertura, recuo e procura.
 const MUDO_MIN = 3;
 export const GAP_ENCONTRO = 2;
 
@@ -35,6 +40,7 @@ export function criarColetor() {
   return {
     passo({ n, t, entidades, eventos }) {
       const dt = ultimo && n === ultimo.n + 1 ? t - ultimo.t : 0;
+      const tAnterior = ultimo && n === ultimo.n + 1 ? ultimo.t : null; // sem passo anterior seguido, dt = 0 e nada soma
       ultimo = { n, t };
       // Lacuna: encontro cujo alvo não foi o `alvoId` do bot por mais de GAP_ENCONTRO s fecha antes de olhar este passo.
       for (const [chave, a] of [...abertos]) if (t - a.ultimo > GAP_ENCONTRO) fechar(chave);
@@ -43,7 +49,8 @@ export function criarColetor() {
         if (alvo === null) continue;
         const dono = entidades.find((x) => x.id === alvo);
         if (mortosRound.has(alvo) || dono?.vivo === false) continue; // alvoId velho de alvo morto: nem encontro nem tempo com alvo
-        comAlvo.set(e.id, (comAlvo.get(e.id) ?? 0) + dt);
+        const visto = tAnterior !== null && (e.cerebro.percepcao ?? []).some((a) => a.id === alvo && a.t >= tAnterior);
+        if (visto) comAlvo.set(e.id, (comAlvo.get(e.id) ?? 0) + dt);
         const chave = `${e.id}>${alvo}`;
         const a = abertos.get(chave);
         if (a) a.ultimo = t;
