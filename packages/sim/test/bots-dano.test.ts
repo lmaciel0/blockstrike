@@ -4,6 +4,8 @@ import { aplicarDano, criarMundo, posicionarParaRound } from '../src/mundo.js';
 import { criarGrafo } from '../src/navegacao.js';
 import { MAPA } from '../src/mapa.js';
 import { criarRng } from '../src/rng.js';
+import { atualizarGranadas, visadaLivre } from '../src/granadas.js';
+import { GRANADA } from '../src/config.js';
 import type { Caixa, Entidade, Mundo } from '../src/tipos.js';
 
 // Dano de quem não vê: o bot recebe só a direção (±15°) de onde veio o tiro, nunca a posição do atirador.
@@ -73,4 +75,30 @@ test('dano: atirador visível continua em combate', () => {
   levarTiro(mundo, b, t);
   pensar(b, mundo, grafo, 'medio', DT, criarRng(7));
   expect(b.cerebro!.estado).toBe('combate');
+});
+
+// Atirador (ou HE) atrás do bot, com uma fumaça no meio: o dano dá só a direção (±15°), nunca a posição.
+// O ponto da ameaça fica sempre a 15 m do bot, qualquer que seja a distância real do atirador.
+test('dano por trás através de fumaça: só direção ±15° e ponto a 15 m, qualquer distância', () => {
+  for (const d of [12, 40]) {
+    const { mundo, b, t } = cena([chao], { x: 5, z: d }); // atrás do bot (ele olha para -z)
+    mundo.granadas.push({
+      tipo: 'smoke', dono: t.id, time: t.time, nasceEm: mundo.tempo, fusivel: 0.05,
+      pos: { x: 0, y: 0.2, z: 4 }, vel: { x: 0, y: 0, z: 0 }, quiques: 0,
+    });
+    const semDano = (): void => undefined;
+    mundo.tempo += 0.1; // o fusível estoura e a nuvem nasce
+    atualizarGranadas(mundo, 0.1, [], semDano);
+    mundo.tempo += GRANADA.fumaca.abrir + 0.1; // nuvem aberta
+    expect(mundo.fumacas.length, 'fumaça ativa').toBe(1);
+    expect(visadaLivre(mundo, { x: 0, y: 1.6, z: 0 }, { x: 5, y: 1.6, z: d }), 'fumaça corta a visada').toBe(false);
+
+    levarTiro(mundo, b, t);
+    pensar(b, mundo, grafo, 'medio', DT, criarRng(7));
+    const p = b.cerebro!.ouvidoPos!;
+    expect(p, `d=${d}`).not.toBe(null);
+    expect(Math.hypot(p.x - b.pos.x, p.z - b.pos.z), `d=${d}: ameaça a 15 m`).toBeCloseTo(15, 6);
+    const erro = Math.abs(angulo(yawDe(p.x, p.z) - yawDe(5, d)));
+    expect(erro, `d=${d}: direção`).toBeLessThanOrEqual(15 * GRAU + 1e-9);
+  }
 });

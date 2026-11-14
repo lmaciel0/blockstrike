@@ -98,4 +98,15 @@ describe('percepção atrasada', () => {
     expect(p.t).toBeGreaterThan(0.7);
     expect(velocidadePercebida(amostras, 1, 1.15, 0.4)).toEqual({ x: 0, z: 0 });
   });
+
+  // Intencional: amostras consecutivas a mais de base + 0,05 s (dt grande, > 0,15 s) são tratadas como possível
+  // perda de visada — o alvo pode ter sumido e voltado entre elas —, então a velocidade vira zero e o bot não
+  // adianta (previsão) um alvo que andou nesse intervalo, mesmo que ele estivesse andando de verdade.
+  test('velocidadePercebida: amostras a mais de base + 0,05 s dão zero (lacuna possível, de propósito)', () => {
+    const amostras: Amostra[] = [];
+    for (const t of [0, 0.2, 0.4, 0.6]) registrarVistos(amostras, [alvo(1, 5 * t)], t, JANELA_PERCEPCAO); // 5 m/s, dt 0,2
+    const p = percebido(amostras, 1, 1, 0.4)!;
+    expect(p.t).toBeCloseTo(0.6, 9);
+    expect(velocidadePercebida(amostras, 1, 1, 0.4)).toEqual({ x: 0, z: 0 });
+  });
 });

@@ -398,6 +398,9 @@ function mirarComMao(
   const r = moverMao({ yaw: ent.yaw, pitch: ent.pitch }, alvo, c.mao, perfil, agora, dt, rng, alvo.vel);
   cmd.yaw = r.yaw;
   cmd.pitch = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, r.pitch));
+  // Limite mordeu: a velocidade que empurra para fora dele não pode acumular na mão.
+  if (r.pitch > PITCH_MAX && c.mao.vPitch > 0) c.mao.vPitch = 0;
+  else if (r.pitch < -PITCH_MAX && c.mao.vPitch < 0) c.mao.vPitch = 0;
 }
 
 // Mão parada no lugar: sem ponto percebido ainda, segura a mira atual (a velocidade que sobrou freia, sem tremor).
@@ -581,8 +584,8 @@ function voltarParaRota(ent: Entidade, c: Cerebro, grafo: Grafo, caixas: Caixa[]
 }
 
 // Passos de inimigo ouvidos há pouco viram a mira (pela mão virtual, na horizontal) para o barulho
-// (ganha da mira parada).
-function olharRuido(ent: Entidade, c: Cerebro, mundo: Mundo, dif: Dificuldade, dt: number, cmd: Comandos, rng: Rng): void {
+// (ganha da mira parada). Devolve true se moveu a mão: quem chama não pode mover de novo no mesmo passo.
+function olharRuido(ent: Entidade, c: Cerebro, mundo: Mundo, dif: Dificuldade, dt: number, cmd: Comandos, rng: Rng): boolean {
   const ruido = ouvir(ent, mundo, c);
   if (ruido) {
     c.ouvidoEm = ruido.em;
@@ -591,7 +594,9 @@ function olharRuido(ent: Entidade, c: Cerebro, mundo: Mundo, dif: Dificuldade, d
   }
   if (c.ouvidoPos && mundo.tempo < c.ouvidoAte) {
     mirarComMao(ent, c, { yaw: yawPara(ent.pos, c.ouvidoPos), pitch: 0 }, dif.mao, mundo.tempo, dt, rng, cmd);
+    return true;
   }
+  return false;
 }
 
 // No posto sem alvo: mira a saída da rota inimiga (com o desvio do bot), pitch na horizontal.
@@ -708,8 +713,10 @@ export function pensar(
       if (c.perdidoHa > PERDER_ALVO) Object.assign(c, { alvoId: null, vistoHa: 0, emRajada: false });
       // Inimigo visto há pouco (alvo ainda guardado): a mão vai para onde ele foi percebido, não volta para a
       // entrada. Sem isso, quem aparecia por um quadro na borda do cone sumia antes de o bot começar a mirar.
-      if (!olharPercebido(ent, c, mundo, dif, dt, rng, cmd)) mirarEntrada(ent, c, mundo, dt, cmd);
-      olharRuido(ent, c, mundo, dif, dt, cmd, rng);
+      // Uma só atualização da mão por passo: o ruído ganha (como antes); sem ele, o ponto percebido; sem os dois, a entrada.
+      if (!olharRuido(ent, c, mundo, dif, dt, cmd, rng) && !olharPercebido(ent, c, mundo, dif, dt, rng, cmd)) {
+        mirarEntrada(ent, c, mundo, dt, cmd);
+      }
     }
   } else if (alvo) {
     c.estado = 'combate';
