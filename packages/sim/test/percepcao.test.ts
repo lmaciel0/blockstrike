@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { JANELA_PERCEPCAO, percebido, registrarVistos } from '../src/percepcao.js';
+import { JANELA_PERCEPCAO, percebido, registrarVistos, velocidadePercebida } from '../src/percepcao.js';
 import type { Amostra } from '../src/tipos.js';
 
 const DT = 1 / 60;
@@ -71,5 +71,31 @@ describe('percepção atrasada', () => {
     registrarVistos(amostras, [alvo(1, 11), alvo(2, 21)], 0.5, 2);
     expect(percebido(amostras, 2, 0.8, 0.2)!.pos.x).toBe(21);
     expect(percebido(amostras, 1, 0.8, 0.2)!.pos.x).toBe(11);
+  });
+
+  // Previsão (Task 7b): velocidade a partir de duas amostras percebidas (p e a de ~0,1 s antes dela).
+  test('velocidadePercebida: alvo a 5 m/s em x dá v.x ≈ 5', () => {
+    const amostras: Amostra[] = [];
+    ver(amostras, 1, 0, 61, 5); // amostras de t=0 a t=1
+    const v = velocidadePercebida(amostras, 1, 1, 0.4);
+    expect(Math.abs(v.x - 5)).toBeLessThanOrEqual(0.1);
+    expect(Math.abs(v.z)).toBeLessThanOrEqual(1e-9);
+  });
+
+  test('velocidadePercebida: uma só amostra dá zero', () => {
+    const amostras: Amostra[] = [];
+    registrarVistos(amostras, [alvo(1, 3)], 0, JANELA_PERCEPCAO);
+    expect(velocidadePercebida(amostras, 1, 0.5, 0.4)).toEqual({ x: 0, z: 0 });
+    expect(velocidadePercebida(amostras, 2, 0.5, 0.4)).toEqual({ x: 0, z: 0 }); // nunca visto
+  });
+
+  test('velocidadePercebida: lacuna de visada dá zero', () => {
+    const amostras: Amostra[] = [];
+    ver(amostras, 1, 0, 31, 5); // visto até t=0,5
+    ver(amostras, 1, 0.7, 31, 5); // some de 0,5 a 0,7 e volta
+    // p perto de 0,75; a anterior com t <= p.t - 0,1 é a de 0,5, do outro lado da lacuna.
+    const p = percebido(amostras, 1, 1.15, 0.4)!;
+    expect(p.t).toBeGreaterThan(0.7);
+    expect(velocidadePercebida(amostras, 1, 1.15, 0.4)).toEqual({ x: 0, z: 0 });
   });
 });

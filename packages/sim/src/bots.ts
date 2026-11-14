@@ -7,7 +7,7 @@
 import { ARMAS, BOMBA, DIFICULDADE, RECUO_MAX, familia } from './config.js';
 import { PITCH_MAX, angulo, olho, direcao, temVisada } from './fisica.js';
 import { criarMao, moverMao } from './mao.js';
-import { JANELA_PERCEPCAO, percebido, registrarVistos } from './percepcao.js';
+import { JANELA_PERCEPCAO, percebido, registrarVistos, velocidadePercebida } from './percepcao.js';
 import { caminho, maisProximo, coberturaPerto } from './navegacao.js';
 import { siteEm } from './bomba.js';
 import { noFogo, visadaLivre } from './granadas.js';
@@ -394,6 +394,17 @@ function segurarMira(ent: Entidade, c: Cerebro, dif: Dificuldade, agora: number,
   mirarComMao(ent, c, { yaw: ent.yaw, pitch: ent.pitch }, { ...dif.mao, tremor: 0 }, agora, dt, rng, cmd);
 }
 
+// Onde a mão deve mirar o alvo `id`: a amostra percebida (`mao.atraso` s atrás) adiantada, só no plano XZ, pela
+// velocidade percebida × atraso × `mao.previsao` (o humano rastreia com previsão e só erra quando o alvo muda de
+// direção). Só usa amostras da percepção; escondido, p e a velocidade não mudam → o ponto fica parado.
+function pontoPrevisto(c: Cerebro, id: number, agora: number, dif: Dificuldade): Amostra | null {
+  const p = percebido(c.percepcao, id, agora, dif.mao.atraso);
+  if (!p) return null;
+  const v = velocidadePercebida(c.percepcao, id, agora, dif.mao.atraso);
+  const k = dif.mao.atraso * dif.mao.previsao;
+  return { ...p, pos: { x: p.pos.x + v.x * k, y: p.pos.y, z: p.pos.z + v.z * k } };
+}
+
 // Yaw/pitch do ponto (cabeça ou tronco, `c.cabeca`) de onde o alvo foi percebido; parte escondida (atrás de
 // caixa baixa, por exemplo) → mira na outra.
 function miraNoPercebido(ent: Entidade, c: Cerebro, p: Amostra, dif: Dificuldade, mundo: Mundo): Angulos {
@@ -404,18 +415,18 @@ function miraNoPercebido(ent: Entidade, c: Cerebro, p: Amostra, dif: Dificuldade
   return { yaw: yawPara(o, ponto), pitch: Math.atan2(ponto.y - o.y, distXZ(o, ponto)) };
 }
 
-// Alvo guardado (`alvoId`) fora da visada: a mão continua indo para a última posição percebida dele (não ganha
-// posição nova). Devolve false se não há o que olhar (sem alvo ou ainda sem amostra de `mao.atraso` s atrás).
+// Alvo guardado (`alvoId`) fora da visada: a mão continua indo para o último ponto previsto dele (`pontoPrevisto`,
+// não ganha posição nova). Devolve false se não há o que olhar (sem alvo ou ainda sem amostra de `mao.atraso` s atrás).
 function olharPercebido(
   ent: Entidade, c: Cerebro, mundo: Mundo, dif: Dificuldade, dt: number, rng: Rng, cmd: Comandos,
 ): boolean {
-  const p = c.alvoId === null ? null : percebido(c.percepcao, c.alvoId, mundo.tempo, dif.mao.atraso);
+  const p = c.alvoId === null ? null : pontoPrevisto(c, c.alvoId, mundo.tempo, dif);
   if (!p) return false;
   mirarComMao(ent, c, miraNoPercebido(ent, c, p, dif, mundo), dif.mao, mundo.tempo, dt, rng, cmd);
   return true;
 }
 
-// Mira onde percebeu o alvo `mao.atraso` s atrás (pela mão virtual) e decide o gatilho.
+// Mira onde prevê o alvo a partir do que percebeu `mao.atraso` s atrás (pela mão virtual) e decide o gatilho.
 // Mexe só em yaw/pitch/atirar/zoom/lado.
 function atacar(
   ent: Entidade, c: Cerebro, alvo: Entidade, mundo: Mundo, dif: Dificuldade, dt: number, rng: Rng, cmd: Comandos,
@@ -424,7 +435,7 @@ function atacar(
   const agora = mundo.tempo;
   const arma = armaEmMao(ent);
   const def = ARMAS[arma.tipo];
-  const p = percebido(c.percepcao, alvo.id, agora, dif.mao.atraso);
+  const p = pontoPrevisto(c, alvo.id, agora, dif);
   let mira: Angulos | null = null;
   if (p) {
     mira = miraNoPercebido(ent, c, p, dif, mundo);

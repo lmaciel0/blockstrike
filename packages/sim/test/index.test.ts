@@ -20,7 +20,7 @@ const PUBLICO = [
   // navegacao, bots
   'criarGrafo', 'criarCerebro', 'pensar',
   // percepcao
-  'JANELA_PERCEPCAO', 'percebido', 'registrarVistos',
+  'JANELA_PERCEPCAO', 'percebido', 'registrarVistos', 'velocidadePercebida',
   // mao
   'criarMao', 'moverMao',
   // rounds

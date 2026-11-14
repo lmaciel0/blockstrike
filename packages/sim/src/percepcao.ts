@@ -35,3 +35,24 @@ export function percebido(amostras: readonly Amostra[], id: number, tempo: numbe
   }
   return melhor;
 }
+
+/** Base padrão (s) entre as duas amostras da velocidade percebida, e a folga além dela que conta como lacuna. */
+const BASE_VELOCIDADE = 0.1;
+const FOLGA_LACUNA = 0.05;
+
+/**
+ * Velocidade (m/s, plano XZ) com que o inimigo `id` andava quando foi percebido: Δpos/Δt entre a amostra
+ * percebida p (`percebido(...)`) e a mais recente com `t <= p.t - base`. {0,0} sem p, sem amostra anterior ou se
+ * o par atravessa uma lacuna de visada (Δt > base + 0,05). Escondido: p e a anterior não mudam, então a
+ * velocidade fica constante (nunca extrapola pelo tempo desde que sumiu).
+ */
+export function velocidadePercebida(
+  amostras: readonly Amostra[], id: number, tempo: number, atraso: number, base = BASE_VELOCIDADE,
+): { x: number; z: number } {
+  const p = percebido(amostras, id, tempo, atraso);
+  const q = p ? percebido(amostras, id, p.t, base) : null;
+  if (!p || !q) return { x: 0, z: 0 };
+  const dt = p.t - q.t;
+  if (dt <= 0 || dt > base + FOLGA_LACUNA) return { x: 0, z: 0 };
+  return { x: (p.pos.x - q.pos.x) / dt, z: (p.pos.z - q.pos.z) / dt };
+}

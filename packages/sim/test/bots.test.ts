@@ -282,7 +282,7 @@ test('compensação de recuo não sobe para a cabeça', () => {
   // compensar o recuo (a compensação sai atrasada pela inércia) e nunca escolhe a cabeça.
   const ideal: Dificuldade = {
     reacao: 0.2, chanceCabeca: 0, toleranciaTiro: 0.05,
-    mao: { atraso: 0.2, firmeza: 16, amortecimento: 0.7, acelMax: 140, tremor: 0 },
+    mao: { atraso: 0.2, firmeza: 16, amortecimento: 0.7, acelMax: 140, tremor: 0, previsao: 0.7 },
   };
   const rng = criarRng(31);
   const partes = { cabeca: 0, tronco: 0, pernas: 0 };

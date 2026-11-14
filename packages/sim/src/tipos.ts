@@ -147,8 +147,11 @@ export interface ItemCompra extends ItemLoja { id: IdItem; motivo: MotivoCompra 
  * Como a mão virtual (`moverMao`, mao.ts) leva a mira até o alvo: mola de segunda ordem com aceleração limitada
  * e tremor. `atraso` (s) é quanto o bot demora para começar a mirar depois de ver; `firmeza` é ω (rad/s),
  * `amortecimento` é ζ (< 1 passa do ponto e corrige), `acelMax` em rad/s² e `tremor` é o desvio (rad) do yaw.
+ * `previsao` em [0, 1]: fração do movimento percebido que a mão adianta (ponto = percebido + v × atraso × previsao).
  */
-export interface PerfilMao { atraso: number; firmeza: number; amortecimento: number; acelMax: number; tremor: number }
+export interface PerfilMao {
+  atraso: number; firmeza: number; amortecimento: number; acelMax: number; tremor: number; previsao: number;
+}
 
 /**
  * Estado da mão virtual (`criarMao`, mao.ts): velocidade angular (rad/s), desvio de tremor em vigor até

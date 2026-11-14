@@ -4,7 +4,7 @@ import { criarRng } from '../src/rng.js';
 import type { EstadoMao, PerfilMao, Rng } from '../src/tipos.js';
 
 // Perfil médio (valor inicial da Task 6) sem tremor: os testes de dinâmica ficam determinísticos e exatos.
-const MEDIO: PerfilMao = { atraso: 0.4, firmeza: 12, amortecimento: 0.6, acelMax: 90, tremor: 0 };
+const MEDIO: PerfilMao = { atraso: 0.4, firmeza: 12, amortecimento: 0.6, acelMax: 90, tremor: 0, previsao: 0.7 };
 const DT = 1 / 60;
 const angulo = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a));
 

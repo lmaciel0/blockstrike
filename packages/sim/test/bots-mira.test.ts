@@ -117,6 +117,22 @@ test('mira: rastreio atrasado em alvo correndo', () => {
   }
 });
 
+// Task 7b: com previsão, a mão vai para onde o alvo deve estar agora (posição percebida + velocidade × atraso),
+// não só para onde ele estava. Alvo a 4 m/s de lado a 15 m (duelo de entrada).
+test('mira: previsão aproxima a mira do alvo correndo', () => {
+  const perfil = DIFICULDADE.medio.mao;
+  const original = perfil.previsao;
+  try {
+    perfil.previsao = 0;
+    const sem = erroRastreio('medio', 4);
+    perfil.previsao = 0.7;
+    const com = erroRastreio('medio', 4);
+    expect(com, `com previsão ${com.toFixed(4)} x sem ${sem.toFixed(4)}`).toBeLessThan(sem);
+  } finally {
+    perfil.previsao = original;
+  }
+});
+
 // Parede x -4..-1, z -10..-9: esconde (-2.5, -13) do bot em (0,0), mas não a posição inicial a 30°.
 test('mira: alvo escondido não atualiza a mira', () => {
   for (const nome of NOMES) {
