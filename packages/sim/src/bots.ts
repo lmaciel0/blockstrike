@@ -39,6 +39,8 @@ const ALCANCE_IDEAL: Partial<Record<TipoArma, number>> = { sniper: 60, rifle: 20
 
 const ALCANCE_OUVIDO = 15; // m: passo de inimigo até aqui chama a atenção do bot
 const OLHAR_RUIDO = 1; // s olhando para onde veio o barulho
+const ERRO_DIRECAO_DANO = 15 * Math.PI / 180; // rad: erro (uniforme, ±) da direção de quem atirou sem ser visto
+const DIST_AMEACA_DANO = 15; // m: o ponto da ameaça fica sempre a esta distância, qualquer que seja a do atirador
 const GRANADA_INTERVALO: [number, number] = [6, 12]; // s entre arremessos do mesmo bot
 const ALCANCE_HE = [9, 28];
 const ALCANCE_FLASH = [6, 25];
@@ -89,6 +91,13 @@ function gauss(rng: Rng): number {
 
 // Yaw que olha de `de` para `para` (yaw 0 olha para -z).
 const yawPara = (de: PontoXZ, para: PontoXZ): number => Math.atan2(-(para.x - de.x), -(para.z - de.z));
+
+// Ponto da ameaça por direção: o ângulo (yaw da vítima para o atirador) com erro uniforme de ±ERRO_DIRECAO_DANO,
+// a DIST_AMEACA_DANO metros. Não depende de onde o atirador está, só de para que lado ele está.
+export function ameacaPorDirecao(ent: Entidade, anguloReal: number, rng: Rng): PontoXZ {
+  const a = anguloReal + (rng() * 2 - 1) * ERRO_DIRECAO_DANO;
+  return { x: ent.pos.x - Math.sin(a) * DIST_AMEACA_DANO, z: ent.pos.z - Math.cos(a) * DIST_AMEACA_DANO };
+}
 
 function waypointPerto(grafo: Grafo, pos: Vec3, caixas: Caixa[]): number | null {
   return maisProximo(grafo, pos, caixas) ?? maisProximo(grafo, pos, caixas, { exigirVisada: false });
@@ -143,7 +152,7 @@ export function criarCerebro(
   const destino = bomba ? bomba.waypoint! : objetivo(ent, grafo, rng, ordem[indice % 3]);
   return {
     estado: 'rota', rota: rotaDoRound(ent, grafo, caixas, destino, bomba, mundo, indice), alvoId: null, vistoHa: 0,
-    rajada: 0, pausaAte: 0, ultimoDanoDe: null,
+    rajada: 0, pausaAte: 0, ultimoDano: null,
     passoRota: 0, ultimaPos: null, perdidoHa: 0, esperaAte: 0, chegou: false,
     erro: { yaw: 0, pitch: 0 }, erroAte: 0, cabeca: false, municaoVista: null,
     gatilho: false, emRajada: false, preso: 0, queriaAndar: false, recuou: false,
@@ -541,12 +550,18 @@ export function pensar(
     c.ultimaPos = { ...alvo.pos };
   }
 
-  // Levou dano de quem não vê: procura cobertura contra o atirador.
-  if (c.ultimoDanoDe !== null) {
-    const atirador = mundo.entidades.find((e) => e.id === c.ultimoDanoDe);
-    c.ultimoDanoDe = null;
-    const visto = vistos.some((v) => v.ent.id === atirador?.id);
-    if (atirador && !visto && c.estado !== 'recuo') irParaCobertura(ent, c, grafo, caixas, atirador.pos, 'cobertura');
+  // Levou dano: só sabe a direção. Se algum inimigo visível está nessa direção (±erro), é ele e o combate segue;
+  // senão procura cobertura contra um ponto naquela direção (com erro) e vira o olhar para lá.
+  if (c.ultimoDano !== null) {
+    const { angulo: anguloDano } = c.ultimoDano;
+    c.ultimoDano = null;
+    const visto = vistos.some((v) => Math.abs(angulo(yawPara(ent.pos, v.ent.pos) - anguloDano)) <= ERRO_DIRECAO_DANO);
+    if (!visto && c.estado !== 'recuo') {
+      const ponto = ameacaPorDirecao(ent, anguloDano, rng);
+      irParaCobertura(ent, c, grafo, caixas, { x: ponto.x, y: 0, z: ponto.z }, 'cobertura');
+      c.ouvidoAte = agora + OLHAR_RUIDO;
+      c.ouvidoPos = ponto;
+    }
   }
   // Ferido e vendo o inimigo: recua uma vez só por round. Recuar de novo a cada visada virava um vaivém
   // sem fim (cobertura, espera, volta à rota, vê o inimigo, cobertura...); depois do recuo ele luta.
@@ -583,6 +598,10 @@ export function pensar(
       else if (agora >= c.esperaAte) voltarParaRota(ent, c, grafo, caixas, proximoObjetivo(ent, c, mundo, grafo, rng));
     } else if (alvo && c.estado === 'cobertura') {
       atacar(ent, c, alvo, mundo, dif, dt, rng, cmd, { strafe: false });
+    }
+    // Cobertura por causa de dano: a mira vira (pela mão virtual) para a direção do tiro, sem alvo à vista.
+    if (c.estado === 'cobertura' && !alvo && c.ouvidoPos && agora < c.ouvidoAte) {
+      cmd.yaw = girar(ent.yaw, yawPara(ent.pos, c.ouvidoPos), dt);
     }
   } else if (c.estado === 'posto') {
     // Segurando o ângulo: atira do lugar, sem avançar e sem perseguir; sem alvo, volta a mirar a entrada.

@@ -252,8 +252,8 @@ function mvpDoRound(mundo: Mundo, vencedor: Time | null, motivo: MotivoFimRound 
   return melhor;
 }
 
-// `danoFixo`: a faca tira o mesmo em qualquer parte do corpo (só as costas mudam o valor).
-function aplicarDano(
+// Exportada para os testes de `bots-dano`. `danoFixo`: a faca tira o mesmo em qualquer parte do corpo (só as costas mudam o valor).
+export function aplicarDano(
   mundo: Mundo, atirador: Entidade, tipo: CausaDano, golpe: Golpe, eventos: Evento[], danoFixo?: number,
 ): void {
   const alvo = golpe.ent;
@@ -273,7 +273,12 @@ function aplicarDano(
   alvo.hp = Math.max(0, alvo.hp - dano);
   eventos.push({ tipo: 'acerto', atirador: atirador.id, alvo: alvo.id, arma: tipo, parte: golpe.parte, dano, ponto: golpe.ponto, capacete });
   // Fogo não conta: a cada pulso o bot replanejaria a cobertura; quem trata o fogo é `evitarFogo` (bots.js).
-  if (alvo.bot && alvo.cerebro && tipo !== 'molotov') alvo.cerebro.ultimoDanoDe = atirador.id;
+  // O bot só fica sabendo a direção (mesma convenção de `yawPara`: yaw 0 olha para -z), nunca a posição do atirador.
+  if (alvo.bot && alvo.cerebro && tipo !== 'molotov') {
+    alvo.cerebro.ultimoDano = {
+      angulo: Math.atan2(-(atirador.pos.x - alvo.pos.x), -(atirador.pos.z - alvo.pos.z)), em: mundo.tempo,
+    };
+  }
   if (alvo.hp > 0) return;
   // `vivo` só cai no fim do passo (ver `passo`): quem ainda não agiu neste passo revida.
   atirador.kills += 1;

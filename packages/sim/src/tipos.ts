@@ -219,7 +219,8 @@ export interface Cerebro {
   vistoHa: number;
   rajada: number;
   pausaAte: number;
-  ultimoDanoDe: number | null;
+  /** Última direção de onde veio dano (tiro, HE): `angulo` é o yaw da vítima para o atirador; nunca a posição dele. */
+  ultimoDano: { angulo: number; em: number } | null;
   passoRota: number;
   ultimaPos: Vec3 | null;
   perdidoHa: number;

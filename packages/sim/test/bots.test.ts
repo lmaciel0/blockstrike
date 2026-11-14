@@ -95,7 +95,7 @@ test('criarCerebro começa em rota até a metade inimiga', () => {
     const c = criarCerebro(e, grafoMapa, rng);
     expect(c.estado).toBe('rota');
     expect(c.alvoId).toBe(null);
-    expect(c.ultimoDanoDe).toBe(null);
+    expect(c.ultimoDano).toBe(null);
     expect(c.rota.length > 1).toBeTruthy();
     const fim = grafoMapa.nos[c.rota.at(-1)!];
     expect(Math.sign(fim.z) === -Math.sign(e.pos.z) || fim.z === 0, `bot ${e.id} vai para ${fim.z}`).toBeTruthy();
@@ -191,17 +191,21 @@ test('recua com hp baixo e agacha ao chegar na cobertura', () => {
   expect(cmds.at(-1)!.agachar, 'agachado na cobertura').toBeTruthy();
 });
 
+// Reescrito no Plano 2: o bot não recebe mais o id (nem a posição) de quem atirou, só a direção do tiro.
+// O atirador (0,-20) fica atrás do bot (yaw π): direção real 0 rad, e a cobertura é escolhida contra um
+// ponto a 15 m nessa direção ±15°, não contra a posição dele.
 test('dano sem visada leva à cobertura', () => {
   const { mundo, b } = cena({ caixas: caixasCobertura, yaw: Math.PI, inimigo: { x: 0, z: -20 } });
   pensar(b, mundo, grafoCobertura, 'medio', DT, criarRng(14));
-  b.cerebro!.ultimoDanoDe = 5;
+  b.cerebro!.ultimoDano = { angulo: 0, em: mundo.tempo };
   pensar(b, mundo, grafoCobertura, 'medio', DT, criarRng(14));
   expect(b.cerebro!.estado).toBe('cobertura');
-  expect(b.cerebro!.rota.at(-1)).toBe(1);
-  expect(b.cerebro!.ultimoDanoDe).toBe(null);
+  expect(b.cerebro!.rota.length > 1).toBeTruthy();
+  expect(b.cerebro!.ultimoDano).toBe(null);
 });
 
-test('mundo grava ultimoDanoDe no bot atingido', () => {
+// Reescrito no Plano 2: o mundo grava o ângulo (yaw da vítima para o atirador), não o id do atirador.
+test('mundo grava a direção do dano no bot atingido', () => {
   const { mundo, b } = cena({ inimigo: { x: 0, z: -10 } });
   b.cerebro = criarCerebro(b, grafoMapa, criarRng(15));
   const j = mundo.entidades[0];
@@ -215,7 +219,9 @@ test('mundo grava ultimoDanoDe no bot atingido', () => {
     zoom: false, recarregar: false, slot: null, yaw: 0, pitch: j.pitch } as Comandos;
   const ev = passo(mundo, DT, new Map([[0, cmd], [b.id, { ...cmd, atirar: false, yaw: b.yaw, pitch: 0 }]]));
   expect(ev.some((e) => e.tipo === 'acerto' && e.alvo === b.id), JSON.stringify(ev)).toBeTruthy();
-  expect(b.cerebro.ultimoDanoDe).toBe(0);
+  // Jogador em (0,10), bot em (0,-10): o atirador está em +z, yaw π (yaw 0 olha para -z).
+  expect(b.cerebro.ultimoDano).not.toBe(null);
+  expect(Math.abs(Math.abs(b.cerebro.ultimoDano!.angulo) - Math.PI)).toBeLessThan(1e-9);
 });
 
 // Integração: 5×5 bots por 120 s no médio (o limite de 10 s do original vira o timeout do Vitest).

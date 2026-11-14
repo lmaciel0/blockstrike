@@ -40,7 +40,7 @@ test('resumoPartida: relógio de passo fixo termina a partida e difere do dt var
   assert.equal(a.vitoriasT + a.vitoriasCT, a.placar.azul + a.placar.laranja);
 });
 
-// Regenera as seeds 1..5 com `--dt=relogio` e confere byte a byte com tools/baseline/ts-relogio.json:
+// Regenera as seeds 1..5 com `--dt=relogio` e confere byte a byte com tools/baseline/ts-plano2.json:
 // é o que garante que o passo fixo segue determinístico (mesma seed, mesma partida).
 test('baseline:check imprime IDENTICO', { timeout: 900_000 }, () => {
   const saida = execFileSync('npm', ['run', '--silent', 'baseline:check'], {

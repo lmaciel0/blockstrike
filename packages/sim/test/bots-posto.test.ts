@@ -114,7 +114,8 @@ test('tiro de quem não vê manda para a cobertura e depois de volta ao posto', 
   const c = noPosto(3);
   const t = reviverT(c.mundo, { x: 0, z: -26 }); // na base T, atrás da barreira
   const ct = cts(c.mundo).find((e) => siteDe(e) === 'B')!;
-  cerebroDe(ct).ultimoDanoDe = t.id;
+  // Plano 2: o CT só recebe a direção do tiro (yaw da vítima para o atirador), não o id nem a posição do T.
+  cerebroDe(ct).ultimoDano = { angulo: yawPara(ct.pos, t.pos), em: c.mundo.tempo };
   pensar(ct, c.mundo, c.grafo, 'medio', 0.05, c.rng);
   expect(cerebroDe(ct).estado).toBe('cobertura');
   rodar(c, 15, { fora: [t.id] });
