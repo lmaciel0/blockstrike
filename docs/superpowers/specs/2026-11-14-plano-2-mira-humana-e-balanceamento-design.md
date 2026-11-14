@@ -1,6 +1,6 @@
 # Block Strike — Plano 2: mira humana, métricas e balanceamento (design)
 
-Data: 2026-11-14. Status: rascunho para aprovação. Passo 2 do spec `2026-11-13-blockstrike-design.md`, dividido a pedido do dono: este plano cobre mira, métricas e balanceamento; a tática de equipe (trade, rotação, divisão de entrada) fica para o **Plano 2b**.
+Data: 2026-11-14. Status: implementado na branch `feat/plano-2-mira-humana` (aguarda playtest do dono e PR). Resultados finais em `docs/balanceamento.md`. Passo 2 do spec `2026-11-13-blockstrike-design.md`, dividido a pedido do dono: este plano cobre mira, métricas e balanceamento; a tática de equipe (trade, rotação, divisão de entrada) fica para o **Plano 2b**.
 
 ## Intenção e porquê
 
@@ -121,3 +121,15 @@ Forma exata do controlador (mola-amortecedor, PD com saturação, ou equivalente
 - Calibração que bate as metas no simulador mas fica estranha jogando (bot "bêbado"). Mitiga: duelo controlado + playtest do dono antes do merge.
 - Mexer na mira muda a vitória por lado; o balanceamento vem depois da calibração, nunca antes.
 - Custo de CPU do buffer de percepção com 10 bots no servidor (Plano 3): guardar só amostras dos inimigos visíveis e por janela curta.
+
+## Resultado (2026-11-14)
+
+Varredura final (30 seeds, `tools/baseline/varredura-depois.json`), fácil / médio / difícil:
+
+| | vitória T | headshot | 1º acerto | mudos | arma topo |
+|---|---|---|---|---|---|
+| final | 42,2 / 51,5 / 58,3% | 58,2 / 61,7 / 67,4% | 1,33 / 0,88 / 0,55 s | 0 / 0 / 0 | SMG 33,0 / rifle 33,8 / rifle 46,5% |
+
+Duelo de entrada (50 seeds), medianas: começa a mirar 0,57 / 0,40 / 0,27 s; 1º acerto 1,00 / 0,70 / 0,55 s; nenhuma reação abaixo de 0,2 s.
+
+Fora da faixa, com motivo em `docs/balanceamento.md`: headshot (piso vem do dano por parte e do colete, fora das alavancas: decisão do dono), vitória T no fácil e no difícil, rifle no difícil (justificado). Acréscimos ao desenho durante a execução: previsão de movimento na mira (lead) e feedforward de velocidade na mão, sem eles nenhum bot acertava alvo andando.
