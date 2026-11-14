@@ -242,6 +242,7 @@ export interface Cerebro {
   cegoVisto: number;
   casaZ: 0 | 1; // metade do mapa onde nasceu no round: 0 = z >= 0
   desvioMira: number;
+  desencalhes: number; // quantas vezes `PRESO_TEMPO` disparou em `seguirRota` (só para métricas)
   saidaFogo?: { alvo: Vec3; ate: number } | null;
   disparando?: boolean;
   refazerEm?: number;

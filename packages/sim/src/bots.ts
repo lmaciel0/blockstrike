@@ -149,7 +149,7 @@ export function criarCerebro(
     gatilho: false, emRajada: false, preso: 0, queriaAndar: false, recuou: false,
     ouvidoEm: -Infinity, ouvidoAte: 0, ouvidoPos: null, chaveBomba: bomba ? bomba.chave : null,
     proxGranada: 0, cegoVisto: 0, casaZ,
-    desvioMira: sortear(rng, [-DESVIO_MIRA, DESVIO_MIRA]),
+    desvioMira: sortear(rng, [-DESVIO_MIRA, DESVIO_MIRA]), desencalhes: 0,
   };
 }
 
@@ -428,6 +428,7 @@ function seguirRota(ent: Entidade, c: Cerebro, grafo: Grafo, dt: number, cmd: Co
   c.preso = c.queriaAndar && ent.velHoriz < 1 ? c.preso + dt : 0;
   if (c.preso > PRESO_TEMPO) {
     c.preso = 0;
+    c.desencalhes += 1;
     cmd.pular = true;
     if (c.passoRota < c.rota.length - 1) c.passoRota += 1;
   }
