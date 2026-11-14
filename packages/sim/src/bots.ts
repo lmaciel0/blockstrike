@@ -52,7 +52,10 @@ const SAIDA_FIXA = 0.6; // s mantendo a mesma saída do fogo
 // s: amostra percebida até esta idade além do `atraso` ainda conta como "o ponto anda" (base + folga da velocidade).
 const AMOSTRA_RECENTE = 0.15;
 const FUMACA_RECUO = 6; // m à frente para a smoke que cobre a fuga
-const DESVIO_MIRA = 0.15; // rad: variação da mira parada no posto entre os CTs
+// rad: variação da mira parada no posto entre os CTs. No fácil o CT segura o ângulo mal (até ~34° fora da
+// entrada); era 0,15 em todas. Balanceamento (Task 10): com a mira pronta, o CT do fácil ganhava quase todo
+// duelo de quem entrava. Não muda a mira com alvo (mão virtual), só para onde ele olha esperando.
+const DESVIO_MIRA: Record<NomeDificuldade, number> = { facil: 0.6, medio: 0.15, dificil: 0.15 };
 
 const PESOS: [TipoPrimaria, number][] = [
   ['rifle', 0.35], ['fuzil', 0.1], ['rifleS', 0.1], ['smg', 0.13], ['miniSmg', 0.06], ['smgS', 0.06], ['escopeta', 0.2],
@@ -155,6 +158,8 @@ export function criarCerebro(
   // `ent.cerebro` ainda é o do round anterior (outra metade depois da troca de lados): passa a casa nova.
   const bomba = mundo ? destinoBomba(ent, mundo, casaZ) : null;
   const destino = bomba ? bomba.waypoint! : objetivo(ent, grafo, rng, ordem[indice % 3]);
+  // Dificuldade por nome (perfil avulso, sem nome, usa o do médio).
+  const desvio = DESVIO_MIRA[typeof mundo?.dificuldade === 'string' ? mundo.dificuldade : 'medio'];
   return {
     estado: 'rota', rota: rotaDoRound(ent, grafo, caixas, destino, bomba, mundo, indice), alvoId: null, vistoHa: 0,
     rajada: 0, pausaAte: 0, ultimoDano: null,
@@ -163,7 +168,7 @@ export function criarCerebro(
     gatilho: false, emRajada: false, preso: 0, queriaAndar: false, recuou: false,
     ouvidoEm: -Infinity, ouvidoAte: 0, ouvidoPos: null, chaveBomba: bomba ? bomba.chave : null,
     proxGranada: 0, cegoVisto: 0, casaZ,
-    desvioMira: sortear(rng, [-DESVIO_MIRA, DESVIO_MIRA]), desencalhes: 0,
+    desvioMira: sortear(rng, [-desvio, desvio]), desencalhes: 0,
     percepcao: [], mao: criarMao(),
   };
 }

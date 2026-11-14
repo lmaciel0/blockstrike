@@ -169,3 +169,23 @@ test('CT no posto vira para onde percebeu o inimigo que sumiu', () => {
   const erro = Math.abs(angulo(e.yaw - alvoYaw));
   expect(erro < 0.25, `mira a ${erro.toFixed(2)} rad do ponto percebido`).toBeTruthy();
 });
+
+// Task 10 (balanceamento): no fácil o CT segura o ângulo mal, a mira parada do posto fica até 0,6 rad (~34°)
+// fora da entrada; no médio e no difícil continua até 0,15 rad. Com 0,15 no fácil o CT de mira pronta ganhava
+// quase todo duelo de quem entrava (vitória T 40%).
+test('a mira parada do posto varia mais no fácil que no médio e no difícil', () => {
+  const grafo = criarGrafo(MAPA.waypoints, MAPA.arestas);
+  const maior = (dificuldade: 'facil' | 'medio' | 'dificil'): number => {
+    const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade, rng: criarRng(7) });
+    const rng = criarRng(11);
+    let m = 0;
+    for (let i = 0; i < 40; i++) {
+      for (const e of mundo.entidades) m = Math.max(m, Math.abs(criarCerebro(e, grafo, rng, MAPA.caixas, mundo).desvioMira));
+    }
+    return m;
+  };
+  const facil = maior('facil');
+  expect(facil > 0.45 && facil <= 0.6, `fácil: desvio máximo ${facil.toFixed(3)}`).toBeTruthy();
+  expect(maior('medio')).toBeLessThanOrEqual(0.15);
+  expect(maior('dificil')).toBeLessThanOrEqual(0.15);
+});
