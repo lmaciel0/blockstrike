@@ -25,9 +25,10 @@ test('config tem valores exatos', () => {
   expect(ARMAS.faca.pente).toBe(Infinity);
   expect(ARMAS.sniper.zoomFov).toBe(25);
   expect(ARMAS.escopeta.chumbos).toBe(8);
-  // Plano 2 (mira humana): a reação do difícil passou de 0,2 para 0,3 s (sempre >= `mao.atraso`, 0,25 s).
+  // Plano 2 (mira humana): a reação do difícil passou de 0,2 para 0,3 s (sempre >= `mao.atraso`).
+  // Task 9 (calibração): o atraso do difícil caiu de 0,25 para 0,22 s (início de mira no duelo ~0,27 s, faixa 0,2–0,3).
   expect(DIFICULDADE.dificil.reacao).toBe(0.3);
-  expect(DIFICULDADE.dificil.mao.atraso).toBe(0.25);
+  expect(DIFICULDADE.dificil.mao.atraso).toBe(0.22);
   expect(NOMES_BOTS.length).toBe(9);
 });
 

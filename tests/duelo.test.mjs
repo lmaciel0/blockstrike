@@ -28,3 +28,27 @@ test('difícil: mira nunca começa antes de 0,2 s', async () => {
   assert.ok(ds.some((d) => d.inicioMira !== null), 'algum duelo teve mira');
   assert.ok(minimo(ds.map((d) => d.inicioMira)) >= 0.2, `min = ${minimo(ds.map((d) => d.inicioMira))}`);
 });
+
+// Task 9: medianas do duelo de entrada (seeds 1..50) nas faixas do spec. Duelo sem acerto conta como +∞
+// (puxa a mediana para cima: bot que quase nunca acerta não passa).
+const FAIXAS = {
+  facil: { inicioMira: [0.45, 0.65], primeiroAcerto: [0.9, 1.5] },
+  medio: { inicioMira: [0.32, 0.48], primeiroAcerto: [0.6, 1.0] },
+  dificil: { inicioMira: [0.2, 0.3], primeiroAcerto: [0.38, 0.62] },
+};
+const medianaOuInf = (xs) => {
+  const o = xs.map((x) => (x === null ? Infinity : x)).sort((a, b) => a - b);
+  const m = o.length >> 1;
+  return o.length % 2 ? o[m] : (o[m - 1] + o[m]) / 2;
+};
+
+test('medianas do duelo dentro das faixas', async () => {
+  const seeds = Array.from({ length: 50 }, (_, i) => i + 1);
+  for (const [dif, faixas] of Object.entries(FAIXAS)) {
+    const ds = await Promise.all(seeds.map((s) => dueloEntrada(carregar, dif, s)));
+    for (const [campo, [min, max]] of Object.entries(faixas)) {
+      const med = medianaOuInf(ds.map((d) => d[campo]));
+      assert.ok(med >= min && med <= max, `${dif} ${campo}: mediana ${med} fora de [${min}, ${max}]`);
+    }
+  }
+});
