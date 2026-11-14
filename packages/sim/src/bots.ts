@@ -40,6 +40,8 @@ const ALCANCE_IDEAL: Partial<Record<TipoArma, number>> = { sniper: 60, rifle: 20
 const ALCANCE_OUVIDO = 15; // m: passo de inimigo até aqui chama a atenção do bot
 const OLHAR_RUIDO = 1; // s olhando para onde veio o barulho
 const ERRO_DIRECAO_DANO = 15 * Math.PI / 180; // rad: erro (uniforme, ±) da direção de quem atirou sem ser visto
+const ERRO_DIRECAO_RUIDO = ERRO_DIRECAO_DANO; // rad: mesmo erro (±15°) na direção de um ruído ouvido
+const ERRO_DIST_RUIDO = 0.3; // fração: distância percebida do ruído = real × uniforme [1-0,3; 1+0,3]
 const DIST_AMEACA_DANO = 15; // m: o ponto da ameaça fica sempre a esta distância, qualquer que seja a do atirador
 const GRANADA_INTERVALO: [number, number] = [6, 12]; // s entre arremessos do mesmo bot
 const ALCANCE_HE = [9, 28];
@@ -97,6 +99,14 @@ const yawPara = (de: PontoXZ, para: PontoXZ): number => Math.atan2(-(para.x - de
 export function ameacaPorDirecao(ent: Entidade, anguloReal: number, rng: Rng): PontoXZ {
   const a = anguloReal + (rng() * 2 - 1) * ERRO_DIRECAO_DANO;
   return { x: ent.pos.x - Math.sin(a) * DIST_AMEACA_DANO, z: ent.pos.z - Math.cos(a) * DIST_AMEACA_DANO };
+}
+
+// Ponto onde o bot acha que o ruído veio: ângulo real de `de` até o ruído com erro uniforme de ±ERRO_DIRECAO_RUIDO
+// e distância real × uniforme [1-ERRO_DIST_RUIDO, 1+ERRO_DIST_RUIDO]. Nunca a posição exata do ruído.
+export function perceberRuido(de: PontoXZ, r: Ruido, rng: Rng): PontoXZ {
+  const a = yawPara(de, r) + (rng() * 2 - 1) * ERRO_DIRECAO_RUIDO;
+  const d = Math.hypot(r.x - de.x, r.z - de.z) * (1 + (rng() * 2 - 1) * ERRO_DIST_RUIDO);
+  return { x: de.x - Math.sin(a) * d, z: de.z - Math.cos(a) * d };
 }
 
 function waypointPerto(grafo: Grafo, pos: Vec3, caixas: Caixa[]): number | null {
@@ -495,12 +505,12 @@ function voltarParaRota(ent: Entidade, c: Cerebro, grafo: Grafo, caixas: Caixa[]
 }
 
 // Passos de inimigo ouvidos há pouco viram a mira para o barulho (ganha da mira parada).
-function olharRuido(ent: Entidade, c: Cerebro, mundo: Mundo, dt: number, cmd: Comandos): void {
+function olharRuido(ent: Entidade, c: Cerebro, mundo: Mundo, dt: number, cmd: Comandos, rng: Rng): void {
   const ruido = ouvir(ent, mundo, c);
   if (ruido) {
     c.ouvidoEm = ruido.em;
     c.ouvidoAte = mundo.tempo + OLHAR_RUIDO;
-    c.ouvidoPos = { x: ruido.x, z: ruido.z };
+    c.ouvidoPos = perceberRuido(ent.pos, ruido, rng);
   }
   if (c.ouvidoPos && mundo.tempo < c.ouvidoAte) cmd.yaw = girar(ent.yaw, yawPara(ent.pos, c.ouvidoPos), dt);
 }
@@ -612,7 +622,7 @@ export function pensar(
       c.perdidoHa += dt;
       if (c.perdidoHa > PERDER_ALVO) Object.assign(c, { alvoId: null, vistoHa: 0, emRajada: false });
       mirarEntrada(ent, c, mundo, dt, cmd);
-      olharRuido(ent, c, mundo, dt, cmd);
+      olharRuido(ent, c, mundo, dt, cmd, rng);
     }
   } else if (alvo) {
     c.estado = 'combate';
@@ -647,7 +657,7 @@ export function pensar(
       c.estado = 'posto';
     }
     // Ouviu passos de inimigo: segue a rota, mas com a mira virada para o barulho.
-    olharRuido(ent, c, mundo, dt, cmd);
+    olharRuido(ent, c, mundo, dt, cmd, rng);
   }
   if (mundo.fogos?.length) destino = evitarFogo(ent, mundo, destino, cmd);
   if (destino) {

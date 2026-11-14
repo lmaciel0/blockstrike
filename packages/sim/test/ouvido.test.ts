@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { criarMundo, posicionarParaRound, passo } from '../src/mundo.js';
-import { pensar, ouvir } from '../src/bots.js';
+import { pensar, ouvir, perceberRuido } from '../src/bots.js';
 import { criarGrafo } from '../src/navegacao.js';
 import { MAPA } from '../src/mapa.js';
 import { criarRng } from '../src/rng.js';
@@ -78,4 +78,34 @@ test('bot ignora passos longe, de aliado e já tratados', () => {
   expect(ouvir(bot, m, c)).toBeTruthy();
   c.ouvidoEm = 1;
   expect(ouvir(bot, m, c), 'já tratado').toBe(null);
+});
+
+// Yaw (0 olha para -z) de `de` até `para`; mesma convenção do sim.
+const yawDe = (de: { x: number; z: number }, para: { x: number; z: number }): number =>
+  Math.atan2(-(para.x - de.x), -(para.z - de.z));
+
+test('perceberRuido: erro de ângulo até 15° e distância até 30%', () => {
+  const de = { x: 0, z: 0 };
+  const ruido = { id: 0, time: 'azul' as const, x: 10, z: 0, em: 0 }; // a 10 m, em +x
+  const real = yawDe(de, ruido);
+  const lim = (15 * Math.PI) / 180;
+  let algumDiferente = false;
+  for (let seed = 1; seed <= 500; seed++) {
+    const p = perceberRuido(de, ruido, criarRng(seed));
+    let dAng = yawDe(de, p) - real;
+    dAng = Math.atan2(Math.sin(dAng), Math.cos(dAng));
+    expect(Math.abs(dAng), `seed ${seed}: ângulo`).toBeLessThanOrEqual(lim + 1e-9);
+    const dist = Math.hypot(p.x - de.x, p.z - de.z);
+    expect(dist, `seed ${seed}: distância`).toBeGreaterThanOrEqual(7 - 1e-9);
+    expect(dist, `seed ${seed}: distância`).toBeLessThanOrEqual(13 + 1e-9);
+    if (Math.abs(p.x - ruido.x) > 1e-6 || Math.abs(p.z - ruido.z) > 1e-6) algumDiferente = true;
+  }
+  expect(algumDiferente, 'nem todos iguais à posição exata').toBe(true);
+});
+
+test('perceberRuido: determinístico pela seed', () => {
+  const de = { x: 3, z: -2 };
+  const ruido = { id: 0, time: 'azul' as const, x: 10, z: 5, em: 0 };
+  expect(perceberRuido(de, ruido, criarRng(42))).toEqual(perceberRuido(de, ruido, criarRng(42)));
+  expect(perceberRuido(de, ruido, criarRng(42))).not.toEqual(perceberRuido(de, ruido, criarRng(43)));
 });
