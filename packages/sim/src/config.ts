@@ -66,7 +66,9 @@ export const ECONOMIA: {
   recompensaKill: Partial<Record<TipoArma, number>>; freezeCompra: number;
 } = {
   inicial: 800, maximo: 16000, vitoria: 3250,
-  derrota: [1400, 1900, 2400, 2900, 3400], // bônus de quem perde: sobe a cada derrota seguida
+  // Bônus de quem perde: sobe a cada derrota seguida. +$500 por degrau no balanceamento (era 1400..3400):
+  // segura a bola de neve do lado que perde.
+  derrota: [1900, 2400, 2900, 3400],
   recompensaKill: { rifle: 300, pistola: 300, sniper: 100, escopeta: 900, faca: 900, smg: 600 },
   freezeCompra: 12, // s de freeze com o menu de compra
 };

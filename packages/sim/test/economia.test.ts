@@ -93,14 +93,16 @@ test('fim de round: vitória $3250; derrotas seguidas sobem o bônus até $3400'
   for (const e of m.entidades) e.dinheiro = 0;
   E.premiarRound(m, p, 'azul');
   expect(m.entidades[0].dinheiro).toBe(ECONOMIA.vitoria);
-  expect(m.entidades[9].dinheiro).toBe(1400);
+  // Task 10 (balanceamento): bônus de derrota +$500 em cada degrau (era 1400..3400). Segura a bola de neve
+  // do lado que perde; no fácil os Ts perdiam e ficavam sem dinheiro (vitória T 40%).
+  expect(m.entidades[9].dinheiro).toBe(1900);
   const seq = [];
   for (let i = 0; i < 6; i++) {
     for (const e of m.entidades) e.dinheiro = 0;
     E.premiarRound(m, p, 'azul');
     seq.push(m.entidades[9].dinheiro);
   }
-  expect(seq).toStrictEqual([1900, 2400, 2900, 3400, 3400, 3400]);
+  expect(seq).toStrictEqual([2400, 2900, 3400, 3400, 3400, 3400]);
   // O laranja ganha um round: a sequência dele cai uma.
   for (const e of m.entidades) e.dinheiro = 0;
   E.premiarRound(m, p, 'laranja');
@@ -114,7 +116,7 @@ test('empate conta como derrota para os dois; dinheiro limitado a $16000', () =>
   m.entidades[0].dinheiro = 15500;
   E.premiarRound(m, p, null);
   expect(m.entidades[0].dinheiro).toBe(ECONOMIA.maximo);
-  expect(m.entidades[9].dinheiro).toBe(800 + 1400);
+  expect(m.entidades[9].dinheiro).toBe(800 + 1900);
 });
 
 test('resetarEconomia (intervalo) zera dinheiro, equipamento e sequência', () => {
