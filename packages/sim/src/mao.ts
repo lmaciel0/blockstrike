@@ -28,9 +28,13 @@ export function criarMao(): EstadoMao {
  * Um passo de `dt` segundos da mão de `atual` em direção a `alvo` (+ tremor), no instante `tempo`.
  * Mexe em `m` (velocidade, tremor, `usadaEm`) e devolve o novo yaw/pitch. O yaw vai pelo menor caminho e não é
  * normalizado (como o giro antigo dos bots); o pitch não é limitado aqui.
+ * `vAlvo` (rad/s, opcional): velocidade angular com que o alvo anda. Entra como feedforward no amortecedor
+ * (a = ω²·e + 2ζω·(vAlvo − v), ainda limitada por `acelMax`): a mão acompanha um alvo em velocidade constante
+ * sem o erro de regime de ~2ζ·vAlvo/ω, como o rastreio suave do olho humano. Sem ele (ou zero), nada muda.
  */
 export function moverMao(
   atual: Angulos, alvo: Angulos, m: EstadoMao, perfil: PerfilMao, tempo: number, dt: number, rng: Rng,
+  vAlvo: Angulos = { yaw: 0, pitch: 0 },
 ): Angulos {
   if (tempo - m.usadaEm > PARADA) {
     m.vYaw = 0;
@@ -57,9 +61,9 @@ export function moverMao(
   let { yaw, pitch } = atual;
   for (let i = 0; i < n; i++) {
     // Euler semi-implícito: velocidade primeiro, depois o ângulo com a velocidade nova.
-    m.vYaw += acel(angulo(alvoYaw - yaw), m.vYaw) * h;
+    m.vYaw += acel(angulo(alvoYaw - yaw), m.vYaw - vAlvo.yaw) * h;
     yaw += m.vYaw * h;
-    m.vPitch += acel(alvoPitch - pitch, m.vPitch) * h;
+    m.vPitch += acel(alvoPitch - pitch, m.vPitch - vAlvo.pitch) * h;
     pitch += m.vPitch * h;
   }
   m.usadaEm = tempo;

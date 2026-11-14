@@ -120,3 +120,46 @@ describe('mão virtual', () => {
     expect(c).not.toStrictEqual(a);
   });
 });
+
+describe('mão virtual: feedforward de velocidade', () => {
+  // Alvo em rampa: yaw = 0,2 + w·t (rad). Mão começa em cima do alvo, com a velocidade dele.
+  const W = 0.27; // ≈ 4 m/s de lado a 15 m
+  function erroFinal(comVel: boolean): number {
+    const m = criarMao();
+    const rng = criarRng(1);
+    let atual = { yaw: 0.2, pitch: 0 };
+    let erro = 0;
+    for (let i = 0; i < 120; i++) {
+      const t = i * DT;
+      const alvo = { yaw: 0.2 + W * (t + DT), pitch: 0 };
+      atual = comVel
+        ? moverMao(atual, alvo, m, MEDIO, t, DT, rng, { yaw: W, pitch: 0 })
+        : moverMao(atual, alvo, m, MEDIO, t, DT, rng);
+      erro = angulo(alvo.yaw - atual.yaw);
+    }
+    return erro;
+  }
+
+  test('sem velocidade do alvo: erro de regime ≈ 2ζ·w/ω (comportamento antigo)', () => {
+    const esperado = (2 * MEDIO.amortecimento * W) / MEDIO.firmeza;
+    expect(erroFinal(false)).toBeCloseTo(esperado, 2);
+  });
+
+  test('com velocidade do alvo: erro de regime vai a ~0', () => {
+    // Sobra só a discretização (o alvo pula W·DT por quadro): menos de um quadro de movimento, ~8× menor que sem.
+    expect(Math.abs(erroFinal(true))).toBeLessThan(W * DT);
+  });
+
+  test('velocidade do alvo zero: igual a não passar nada', () => {
+    const a = rodar({ yaw: 0, pitch: 0 }, { yaw: 1, pitch: 0.2 }, 40);
+    const m = criarMao();
+    const rng = criarRng(1);
+    let atual = { yaw: 0, pitch: 0 };
+    const b: Passo[] = [];
+    for (let i = 0; i < 40; i++) {
+      atual = moverMao(atual, { yaw: 1, pitch: 0.2 }, m, MEDIO, i * DT, DT, rng, { yaw: 0, pitch: 0 });
+      b.push({ ...atual, vYaw: m.vYaw, vPitch: m.vPitch });
+    }
+    expect(b).toEqual(a);
+  });
+});

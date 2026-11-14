@@ -133,6 +133,21 @@ test('mira: previsão aproxima a mira do alvo correndo', () => {
   }
 });
 
+// Task 9 (R9): a mão recebe a velocidade angular do ponto previsto (feedforward) e rastreia sem o erro de regime
+// da mola (~2ζ·w/ω, w = 4/15 rad/s). Com previsão 1, sobra quase só o tremor.
+test('mira: feedforward tira o erro de regime no rastreio', () => {
+  const perfil = DIFICULDADE.medio.mao;
+  const original = perfil.previsao;
+  try {
+    perfil.previsao = 1;
+    const erro = erroRastreio('medio', 4);
+    const regime = (2 * perfil.amortecimento * (4 / 15)) / perfil.firmeza;
+    expect(erro, `erro ${erro.toFixed(4)} x regime ${regime.toFixed(4)}`).toBeLessThan(0.5 * regime);
+  } finally {
+    perfil.previsao = original;
+  }
+});
+
 // Parede x -4..-1, z -10..-9: esconde (-2.5, -13) do bot em (0,0), mas não a posição inicial a 30°.
 test('mira: alvo escondido não atualiza a mira', () => {
   for (const nome of NOMES) {

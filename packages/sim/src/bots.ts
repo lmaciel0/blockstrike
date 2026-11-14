@@ -49,6 +49,8 @@ const ALCANCE_MOLOTOV = [6, 22];
 const FOGO_OLHAR = 1.2; // m à frente: fogo aqui no caminho → espera em vez de atravessar
 const FOGO_SAIDA = 1.5; // m além da borda do fogo para onde foge quem está queimando
 const SAIDA_FIXA = 0.6; // s mantendo a mesma saída do fogo
+// s: amostra percebida até esta idade além do `atraso` ainda conta como "o ponto anda" (base + folga da velocidade).
+const AMOSTRA_RECENTE = 0.15;
 const FUMACA_RECUO = 6; // m à frente para a smoke que cobre a fuga
 const DESVIO_MIRA = 0.15; // rad: variação da mira parada no posto entre os CTs
 
@@ -379,12 +381,16 @@ const comandoBase = (ent: Entidade): Comandos => ({
 });
 
 interface Angulos { yaw: number; pitch: number }
+/** Amostra percebida já adiantada pela previsão, com a velocidade (m/s, XZ) com que o ponto anda agora. */
+type Previsto = Amostra & { vel: { x: number; z: number } };
+/** Ângulos de mira e, se o ponto anda, a velocidade angular dele (rad/s) para o feedforward da mão. */
+type Mira = Angulos & { vel?: Angulos };
 
 // Leva a mira pela mão virtual (mao.ts) até `alvo`; o pitch fica dentro do mesmo limite do `passo`.
 function mirarComMao(
-  ent: Entidade, c: Cerebro, alvo: Angulos, perfil: PerfilMao, agora: number, dt: number, rng: Rng, cmd: Comandos,
+  ent: Entidade, c: Cerebro, alvo: Mira, perfil: PerfilMao, agora: number, dt: number, rng: Rng, cmd: Comandos,
 ): void {
-  const r = moverMao({ yaw: ent.yaw, pitch: ent.pitch }, alvo, c.mao, perfil, agora, dt, rng);
+  const r = moverMao({ yaw: ent.yaw, pitch: ent.pitch }, alvo, c.mao, perfil, agora, dt, rng, alvo.vel);
   cmd.yaw = r.yaw;
   cmd.pitch = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, r.pitch));
 }
@@ -397,22 +403,40 @@ function segurarMira(ent: Entidade, c: Cerebro, dif: Dificuldade, agora: number,
 // Onde a mão deve mirar o alvo `id`: a amostra percebida (`mao.atraso` s atrás) adiantada, só no plano XZ, pela
 // velocidade percebida × atraso × `mao.previsao` (o humano rastreia com previsão e só erra quando o alvo muda de
 // direção). Só usa amostras da percepção; escondido, p e a velocidade não mudam → o ponto fica parado.
-function pontoPrevisto(c: Cerebro, id: number, agora: number, dif: Dificuldade): Amostra | null {
+// `vel`: com que velocidade o ponto anda agora — a percebida enquanto p ainda avança (amostra recente), zero
+// quando p parou de mudar (alvo sumiu há mais de `atraso` s), para o feedforward não empurrar a mão.
+function pontoPrevisto(c: Cerebro, id: number, agora: number, dif: Dificuldade): Previsto | null {
   const p = percebido(c.percepcao, id, agora, dif.mao.atraso);
   if (!p) return null;
   const v = velocidadePercebida(c.percepcao, id, agora, dif.mao.atraso);
   const k = dif.mao.atraso * dif.mao.previsao;
-  return { ...p, pos: { x: p.pos.x + v.x * k, y: p.pos.y, z: p.pos.z + v.z * k } };
+  const vivo = agora - dif.mao.atraso - p.t <= AMOSTRA_RECENTE;
+  return { ...p, pos: { x: p.pos.x + v.x * k, y: p.pos.y, z: p.pos.z + v.z * k }, vel: vivo ? v : { x: 0, z: 0 } };
+}
+
+// Velocidade angular (rad/s) de `ponto` visto de `o` quando ele anda a `v` (m/s, XZ): derivada de `yawPara`
+// (yaw = atan2(−dx, −dz)) e do pitch (atan2(dy, distância XZ)). Alimenta o feedforward da mão.
+function velocidadeAngular(o: Vec3, ponto: Vec3, v: { x: number; z: number }): Angulos {
+  const dx = ponto.x - o.x;
+  const dz = ponto.z - o.z;
+  const dy = ponto.y - o.y;
+  const h2 = dx * dx + dz * dz;
+  if (h2 < 1e-6) return { yaw: 0, pitch: 0 };
+  const h = Math.sqrt(h2);
+  const dh = (dx * v.x + dz * v.z) / h;
+  return { yaw: (dz * v.x - dx * v.z) / h2, pitch: (-dy * dh) / (h2 + dy * dy) };
 }
 
 // Yaw/pitch do ponto (cabeça ou tronco, `c.cabeca`) de onde o alvo foi percebido; parte escondida (atrás de
 // caixa baixa, por exemplo) → mira na outra.
-function miraNoPercebido(ent: Entidade, c: Cerebro, p: Amostra, dif: Dificuldade, mundo: Mundo): Angulos {
+function miraNoPercebido(ent: Entidade, c: Cerebro, p: Previsto, dif: Dificuldade, mundo: Mundo): Mira {
   const o = olho(ent);
   const corpo = pontosDoCorpo(p, dif.alturaTronco);
   let ponto = c.cabeca ? corpo.cabeca : corpo.tronco;
   if (!temVisada(o, ponto, mundo.mapa.caixas)) ponto = c.cabeca ? corpo.tronco : corpo.cabeca;
-  return { yaw: yawPara(o, ponto), pitch: Math.atan2(ponto.y - o.y, distXZ(o, ponto)) };
+  return {
+    yaw: yawPara(o, ponto), pitch: Math.atan2(ponto.y - o.y, distXZ(o, ponto)), vel: velocidadeAngular(o, ponto, p.vel),
+  };
 }
 
 // Alvo guardado (`alvoId`) fora da visada: a mão continua indo para o último ponto previsto dele (`pontoPrevisto`,
@@ -436,7 +460,7 @@ function atacar(
   const arma = armaEmMao(ent);
   const def = ARMAS[arma.tipo];
   const p = pontoPrevisto(c, alvo.id, agora, dif);
-  let mira: Angulos | null = null;
+  let mira: Mira | null = null;
   if (p) {
     mira = miraNoPercebido(ent, c, p, dif, mundo);
     // `disparar` soma o recuo antes de aplicar: a mão tenta compensar o valor que o próximo tiro vai usar.
