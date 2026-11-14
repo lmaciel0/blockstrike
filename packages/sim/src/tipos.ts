@@ -267,6 +267,8 @@ export interface Cerebro {
   casaZ: 0 | 1; // metade do mapa onde nasceu no round: 0 = z >= 0
   desvioMira: number;
   desencalhes: number; // quantas vezes `PRESO_TEMPO` disparou em `seguirRota` (só para métricas)
+  /** Desencalhou andando no `direto` da C4: segue a rota até o fim antes de andar reto de novo. */
+  semDireto?: boolean;
   /** Onde cada inimigo visto estava (`registrarVistos`); a mira usa a amostra de `mao.atraso` s atrás. */
   percepcao: Amostra[];
   /** Mão virtual do bot: mira, olhar para o ruído e olhar para o dano dividem a mesma (a velocidade continua). */

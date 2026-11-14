@@ -571,7 +571,7 @@ function irParaCobertura(
 function voltarParaRota(ent: Entidade, c: Cerebro, grafo: Grafo, caixas: Caixa[], destinoId: number | null): void {
   Object.assign(c, {
     estado: 'rota', rota: rotaAte(ent, grafo, caixas, destinoId), passoRota: 0,
-    alvoId: null, vistoHa: 0, chegou: false, preso: 0, emRajada: false,
+    alvoId: null, vistoHa: 0, chegou: false, preso: 0, emRajada: false, semDireto: false,
   });
 }
 
@@ -724,9 +724,14 @@ export function pensar(
     if (bomba && bomba.chave !== c.chaveBomba) {
       voltarParaRota(ent, c, grafo, caixas, proximoObjetivo(ent, c, mundo, grafo, rng));
     }
+    const desencAntes = c.desencalhes;
     destino = seguirRota(ent, c, grafo, dt, cmd);
     const tarefa = tarefaBomba(ent, mundo, cmd);
-    if (tarefa?.direto) {
+    // Preso andando reto: a visada do centro passa, mas o corpo encosta numa quina. O `direto` sobrepunha a
+    // rota e o desencalhe não o tirava dali; agora ele larga o `direto` e segue a rota até o fim.
+    if (tarefa?.direto && c.desencalhes > desencAntes) c.semDireto = true;
+    if (!destino) c.semDireto = false;
+    if (tarefa?.direto && !c.semDireto) {
       cmd.yaw = girar(ent.yaw, yawPara(ent.pos, tarefa.direto), dt);
       destino = tarefa.direto;
     } else if (tarefa?.parado) {
