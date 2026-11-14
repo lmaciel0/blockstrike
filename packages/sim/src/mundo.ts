@@ -4,7 +4,7 @@
  */
 
 import { JOGADOR, NOMES_BOTS, ARMAS } from './config.js';
-import { moverComColisao, direcao, olho, hitboxes, raycastCaixas, raycastEntidades } from './fisica.js';
+import { PITCH_MAX, moverComColisao, direcao, olho, hitboxes, raycastCaixas, raycastEntidades } from './fisica.js';
 import {
   criarArma, podeAtirar, disparar, atualizarArma, iniciarRecarga, danoDe, velocidadeDe, SAQUE,
 } from './armas.js';
@@ -20,7 +20,6 @@ import type {
   TipoArmaDeFogo, TipoPrimaria, Vec3, Vivos,
 } from './tipos.js';
 
-const PITCH_MAX = 1.5;
 const DIST_PASSO = 1.8;
 const ID_JOGADOR = 0;
 const ALCANCE_TIRO = 200;

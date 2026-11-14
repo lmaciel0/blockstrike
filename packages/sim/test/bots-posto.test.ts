@@ -141,3 +141,31 @@ test('cérebro novo usa a metade de onde o bot nasceu, não a do round anterior'
     }
   }
 });
+
+// Plano 2 (mira humana): o CT no posto não gira mais no primeiro quadro em que vê alguém (a mão espera `mao.atraso`).
+// Inimigo que aparece um instante na borda do cone e some: a mão vai para onde ele foi percebido, em vez de voltar
+// para a entrada (antes, com o T oscilando na borda do cone, o CT nunca chegava a mirar nem atirar).
+test('CT no posto vira para onde percebeu o inimigo que sumiu', () => {
+  const c = noPosto(3);
+  const e = cts(c.mundo)[0];
+  const olhoE = { x: e.pos.x, y: e.pos.y + 1.6, z: e.pos.z };
+  const yawVisto = e.yaw + (50 * Math.PI) / 180;
+  let ponto: PontoXZ | null = null;
+  for (let d = 12; d >= 4 && !ponto; d -= 0.5) {
+    const p = { x: e.pos.x - Math.sin(yawVisto) * d, z: e.pos.z - Math.cos(yawVisto) * d };
+    if (temVisada(olhoE, { x: p.x, y: 1.6, z: p.z }, MAPA.caixas)) ponto = p;
+  }
+  expect(ponto, 'sem ponto com visada a 50° do posto').not.toBe(null);
+  const t = reviverT(c.mundo, ponto!);
+  const umPasso = (): void => {
+    const cmd = pensar(e, c.mundo, c.grafo, 'medio', 1 / 60, c.rng);
+    passo(c.mundo, 1 / 60, new Map([[e.id, cmd]]));
+  };
+  umPasso(); // vê o T por um quadro
+  expect(cerebroDe(e).alvoId).toBe(t.id);
+  t.pos = { x: e.pos.x + Math.sin(e.yaw) * 10, y: 0, z: e.pos.z + Math.cos(e.yaw) * 10 }; // some: 10 m às costas
+  const alvoYaw = yawPara(e.pos, ponto!);
+  for (let i = 0; i < 48; i++) umPasso(); // 0,8 s: passa o atraso (0,4 s) e a mão gira
+  const erro = Math.abs(angulo(e.yaw - alvoYaw));
+  expect(erro < 0.25, `mira a ${erro.toFixed(2)} rad do ponto percebido`).toBeTruthy();
+});

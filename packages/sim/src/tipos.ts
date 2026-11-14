@@ -248,8 +248,6 @@ export interface Cerebro {
   perdidoHa: number;
   esperaAte: number;
   chegou: boolean;
-  erro: { yaw: number; pitch: number };
-  erroAte: number;
   cabeca: boolean;
   municaoVista: { slot: Slot; n: number } | null;
   gatilho: boolean;
@@ -266,17 +264,25 @@ export interface Cerebro {
   casaZ: 0 | 1; // metade do mapa onde nasceu no round: 0 = z >= 0
   desvioMira: number;
   desencalhes: number; // quantas vezes `PRESO_TEMPO` disparou em `seguirRota` (só para métricas)
+  /** Onde cada inimigo visto estava (`registrarVistos`); a mira usa a amostra de `mao.atraso` s atrás. */
+  percepcao: Amostra[];
+  /** Mão virtual do bot: mira, olhar para o ruído e olhar para o dano dividem a mesma (a velocidade continua). */
+  mao: EstadoMao;
   saidaFogo?: { alvo: Vec3; ate: number } | null;
   disparando?: boolean;
   refazerEm?: number;
 }
 
-/** Entrada de `DIFICULDADE` (config.ts). Só a fácil tem `alturaTronco`. */
+/**
+ * Entrada de `DIFICULDADE` (config.ts). Só a fácil tem `alturaTronco`. `reacao` (s, sempre >= `mao.atraso`) segura
+ * o gatilho desde que viu; `toleranciaTiro` (rad) é o quanto a mira real pode estar longe do ponto percebido no tiro.
+ */
 export interface Dificuldade {
   reacao: number;
-  erroMira: number;
   chanceCabeca: number;
   alturaTronco?: number;
+  toleranciaTiro: number;
+  mao: PerfilMao;
 }
 export type NomeDificuldade = 'facil' | 'medio' | 'dificil';
 

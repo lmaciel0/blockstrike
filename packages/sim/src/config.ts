@@ -168,11 +168,21 @@ export const ARMAS: Record<TipoArma, DefArma> = {
 // Tipo base da arma (a própria, se não for variante).
 export const familia = (tipo: TipoArma): TipoArma => ARMAS[tipo]?.familia ?? tipo;
 
-// reacao em segundos; erroMira em radianos; chanceCabeca em [0,1]; alturaTronco em m (ponto de mira no corpo).
+// reacao em segundos (>= mao.atraso); chanceCabeca em [0,1]; alturaTronco em m (ponto de mira no corpo);
+// toleranciaTiro em rad; mao = perfil da mão virtual (atraso para começar a mirar, mola, aceleração e tremor).
 export const DIFICULDADE: Record<NomeDificuldade, Dificuldade> = {
-  facil: { reacao: 0.6, erroMira: 0.07, chanceCabeca: 0.03, alturaTronco: 0.95 },
-  medio: { reacao: 0.38, erroMira: 0.04, chanceCabeca: 0.3 },
-  dificil: { reacao: 0.2, erroMira: 0.02, chanceCabeca: 0.45 },
+  facil: {
+    reacao: 0.75, chanceCabeca: 0.03, alturaTronco: 0.95, toleranciaTiro: 0.05,
+    mao: { atraso: 0.55, firmeza: 9, amortecimento: 0.55, acelMax: 60, tremor: 0.012 },
+  },
+  medio: {
+    reacao: 0.5, chanceCabeca: 0.3, toleranciaTiro: 0.035,
+    mao: { atraso: 0.4, firmeza: 12, amortecimento: 0.6, acelMax: 90, tremor: 0.008 },
+  },
+  dificil: {
+    reacao: 0.3, chanceCabeca: 0.45, toleranciaTiro: 0.025,
+    mao: { atraso: 0.25, firmeza: 16, amortecimento: 0.7, acelMax: 140, tremor: 0.005 },
+  },
 };
 
 // Exibidos como `Bot <nome>`.
