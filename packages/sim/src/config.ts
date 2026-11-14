@@ -75,7 +75,7 @@ export const ECONOMIA: {
 
 // id → { nome, preco, grupo }. `kit` só vale para CT; as granadas têm limite por tipo.
 export const ITENS: Record<IdItem, ItemLoja> = {
-  rifle: { nome: 'Rifle', preco: 2700, grupo: 'arma' },
+  rifle: { nome: 'Rifle', preco: 3100, grupo: 'arma' }, // era 2700: ver docs/balanceamento.md
   fuzil: { nome: 'Fuzil', preco: 3100, grupo: 'arma' },
   rifleS: { nome: 'Rifle-S', preco: 2900, grupo: 'arma' },
   smg: { nome: 'SMG', preco: 1250, grupo: 'arma' },

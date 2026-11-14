@@ -40,7 +40,7 @@ test('iniciarEconomia: $800, sem equipamento e só pistola e faca no primeiro ro
 test('comprar arma: desconta, entrega na hora e põe na mão', () => {
   const m = cenario();
   const e = m.entidades[0];
-  e.dinheiro = 3000;
+  e.dinheiro = 3400; // rifle a $3100 desde a Task 10 (era $3000 com o rifle a $2700)
   const r = E.comprar(e, 'rifle', 'CT');
   expect(r.ok).toBeTruthy();
   expect(e.dinheiro).toBe(300);
@@ -214,7 +214,7 @@ test('botComprar: sem dinheiro só colete; com dinheiro, arma + colete com capac
   expect(rico.equip.capacete).toBeTruthy();
   expect(rico.equip.kit).toBeTruthy();
   const medio = m.entidades[4];
-  medio.dinheiro = 3000;
+  medio.dinheiro = 3400; // cabe o rifle ($3100 desde a Task 10), não a sniper + colete
   medio.primariaEscolhida = 'sniper';
   E.botComprar(medio, 'T');
   expect(medio.equip.primaria, 'sniper não cabe: cai para o rifle').toBe('rifle');
@@ -227,4 +227,11 @@ test('sem economia (treino) nada muda: todos têm primária e dano sem colete', 
   posicionarParaRound(m, 'A');
   expect(m.economia).toBe(undefined);
   expect(m.entidades[0].armas!.primaria!.tipo).toBe('smg');
+});
+
+// Task 10 (balanceamento): o rifle passou de $2700 para $3100, o preço do fuzil. Era a arma mais comprada
+// (preferência de 35% dos bots e reserva de quem não alcança sniper/fuzil) e passava de 35% das kills.
+test('o rifle custa $3100, o mesmo que o fuzil', () => {
+  expect(ITENS.rifle.preco).toBe(3100);
+  expect(ITENS.rifle.preco).toBe(ITENS.fuzil.preco);
 });
