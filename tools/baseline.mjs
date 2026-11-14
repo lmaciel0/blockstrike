@@ -168,7 +168,7 @@ export async function resumoPartida(carregar, dificuldade, seed, opcoesDt, { met
 }
 
 // "1..5" ou "1,3,5" -> [numeros]
-function lerSeeds(texto) {
+export function lerSeeds(texto) {
   const faixa = /^(\d+)\.\.(\d+)$/.exec(texto);
   if (faixa) {
     const [a, b] = [Number(faixa[1]), Number(faixa[2])];

@@ -111,6 +111,16 @@ test('coletor: bot mudo tem alvo por 3 s ou mais sem emitir tiro', () => {
   assert.equal(d.resultado().botsMudos, 0);
 });
 
+test('coletor: alvo morto não conta como bot mudo', () => {
+  // O `alvoId` fica velho depois que o alvo morre: 4 s apontando para um morto não é bot mudo.
+  const c = criarColetor();
+  const passos = Array.from({ length: 40 }, () => ({ alvoId: 7 }));
+  passos[1] = { alvoId: 7, eventos: [{ tipo: 'morte', vitima: 7, assassino: 2, arma: 'rifle' }] };
+  alimentar(c, passos);
+  c.fimRound([bot(7)]);
+  assert.equal(c.resultado().botsMudos, 0);
+});
+
 test('coletor: soma desencalhes dos cérebros no fim do round, uma vez por cérebro', () => {
   const c = criarColetor();
   const b = { id: 1, vivo: true, cerebro: { alvoId: null, desencalhes: 3 } };

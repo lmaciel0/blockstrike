@@ -7,7 +7,7 @@
 // Um par só tem encontros em sequência, nunca sobrepostos.
 // Primeiro acerto: tempo do início do encontro até o primeiro evento `acerto` do bot nesse alvo, com o encontro aberto.
 // Encontro fechado sem acerto conta em `encontrosSemAcerto`.
-// Bot mudo: num round, >= 3 s com `alvoId` não nulo e nenhum evento `tiro` dele.
+// Bot mudo: num round, >= 3 s com `alvoId` apontando para alvo ainda vivo e nenhum evento `tiro` dele.
 const MUDO_MIN = 3;
 export const GAP_ENCONTRO = 2;
 
@@ -41,9 +41,9 @@ export function criarColetor() {
       for (const e of entidades) {
         const alvo = e.vivo !== false && e.cerebro ? e.cerebro.alvoId : null;
         if (alvo === null) continue;
-        comAlvo.set(e.id, (comAlvo.get(e.id) ?? 0) + dt);
         const dono = entidades.find((x) => x.id === alvo);
-        if (mortosRound.has(alvo) || dono?.vivo === false) continue;
+        if (mortosRound.has(alvo) || dono?.vivo === false) continue; // alvoId velho de alvo morto: nem encontro nem tempo com alvo
+        comAlvo.set(e.id, (comAlvo.get(e.id) ?? 0) + dt);
         const chave = `${e.id}>${alvo}`;
         const a = abertos.get(chave);
         if (a) a.ultimo = t;
