@@ -35,6 +35,9 @@ export { criarCerebro, pensar } from './bots.js';
 // Percepção atrasada: o que o bot viu de cada inimigo e onde ele estava `atraso` segundos atrás.
 export { JANELA_PERCEPCAO, percebido, registrarVistos } from './percepcao.js';
 
+// Mão virtual: leva yaw/pitch do bot até o alvo com inércia, aceleração limitada e tremor.
+export { criarMao, moverMao } from './mao.js';
+
 // Partida: rounds, lados e a C4.
 export { criarPartida, ladoAzul, terroristasDe, tickPartida } from './rounds.js';
 export { criarBomba, acaoPossivel, siteEm } from './bomba.js';

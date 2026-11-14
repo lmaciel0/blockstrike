@@ -14,3 +14,9 @@ export function criarRng(seed: number): Rng {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/** Normal padrão (Box-Muller) com o `rng` dado; consome sempre dois sorteios, na ordem. */
+export function gauss(rng: Rng): number {
+  const u = Math.max(rng(), 1e-12);
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rng());
+}

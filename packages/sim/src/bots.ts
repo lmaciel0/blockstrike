@@ -5,7 +5,8 @@
  */
 
 import { ARMAS, BOMBA, DIFICULDADE, RECUO_MAX, familia } from './config.js';
-import { olho, direcao, temVisada } from './fisica.js';
+import { angulo, olho, direcao, temVisada } from './fisica.js';
+import { gauss } from './rng.js';
 import { caminho, maisProximo, coberturaPerto } from './navegacao.js';
 import { siteEm } from './bomba.js';
 import { noFogo, visadaLivre } from './granadas.js';
@@ -83,13 +84,7 @@ export function escolherPrimaria(indiceNoTime: number, rng: Rng): TipoPrimaria {
 }
 
 const sortear = (rng: Rng, [a, b]: readonly [number, number]): number => a + rng() * (b - a);
-const angulo = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a));
 const distXZ = (a: PontoXZ, b: PontoXZ): number => Math.hypot(a.x - b.x, a.z - b.z);
-
-function gauss(rng: Rng): number {
-  const u = Math.max(rng(), 1e-12);
-  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rng());
-}
 
 // Yaw que olha de `de` para `para` (yaw 0 olha para -z).
 const yawPara = (de: PontoXZ, para: PontoXZ): number => Math.atan2(-(para.x - de.x), -(para.z - de.z));

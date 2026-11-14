@@ -21,6 +21,8 @@ const PUBLICO = [
   'criarGrafo', 'criarCerebro', 'pensar',
   // percepcao
   'JANELA_PERCEPCAO', 'percebido', 'registrarVistos',
+  // mao
+  'criarMao', 'moverMao',
   // rounds
   'criarPartida', 'ladoAzul', 'terroristasDe', 'tickPartida',
   // bomba

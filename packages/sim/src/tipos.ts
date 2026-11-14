@@ -143,6 +143,25 @@ export interface ItemCompra extends ItemLoja { id: IdItem; motivo: MotivoCompra 
 
 // ---------- Entidade, comandos e cérebro ----------
 
+/**
+ * Como a mão virtual (`moverMao`, mao.ts) leva a mira até o alvo: mola de segunda ordem com aceleração limitada
+ * e tremor. `atraso` (s) é quanto o bot demora para começar a mirar depois de ver; `firmeza` é ω (rad/s),
+ * `amortecimento` é ζ (< 1 passa do ponto e corrige), `acelMax` em rad/s² e `tremor` é o desvio (rad) do yaw.
+ */
+export interface PerfilMao { atraso: number; firmeza: number; amortecimento: number; acelMax: number; tremor: number }
+
+/**
+ * Estado da mão virtual (`criarMao`, mao.ts): velocidade angular (rad/s), desvio de tremor em vigor até
+ * `tremorAte` e o `tempo` da última chamada (`usadaEm`; parada há mais de 0,1 s volta com velocidade 0).
+ */
+export interface EstadoMao {
+  vYaw: number;
+  vPitch: number;
+  tremor: { yaw: number; pitch: number };
+  tremorAte: number;
+  usadaEm: number;
+}
+
 /** Onde um inimigo visto estava num instante (`registrarVistos`, percepcao.ts); a mira usa a amostra atrasada. */
 export interface Amostra { id: number; t: number; pos: Vec3; agachado: boolean }
 
