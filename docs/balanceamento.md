@@ -23,13 +23,26 @@ Depois da calibração da mira (`tools/baseline/varredura-calibrada.json`, Task 
 | médio | 53,1% | 60,0% | 0,87 | 0,00 | 0 | rifle 41,5% |
 | difícil | 53,9% | 68,5% | 0,55 | 0,00 | 0 | rifle 52,8% |
 
-Final (`tools/baseline/varredura-depois.json`):
+Fim da Task 10 (antes da correção da revisão final):
 
 | dificuldade | vitória T | headshot | 1º acerto (s) | desenc./partida | mudos | arma topo | 2ª arma |
 |---|---|---|---|---|---|---|---|
 | fácil | 41,9% | 58,0% | 1,30 | 0,13 | 2 | SMG 32,0% | rifle 29,3% |
 | médio | 51,4% | 61,2% | 0,88 | 0,00 | 1 | rifle 33,8% | SMG 31,6% |
 | difícil | 54,0% | 67,7% | 0,57 | 0,03 | 1 | rifle 46,0% | SMG 20,8% |
+
+Final (`tools/baseline/varredura-depois.json`, código final com a correção da revisão: no posto a mão é movida
+uma vez só por passo, commit 4b8bf2f):
+
+| dificuldade | vitória T | headshot | 1º acerto (s) | desenc./partida | mudos | arma topo | 2ª arma |
+|---|---|---|---|---|---|---|---|
+| fácil | 42,2% | 58,2% | 1,33 | 0,03 | 0 | SMG 33,0% | rifle 28,0% |
+| médio | 51,5% | 61,7% | 0,88 | 0,00 | 0 | rifle 33,8% | SMG 31,8% |
+| difícil | 58,3% | 67,4% | 0,55 | 0,03 | 0 | rifle 46,5% | SMG 19,0% |
+
+A correção da revisão mudou o olhar do CT no posto e, com a simulação caótica, moveu a vitória T do difícil de
+54,0% para 58,3% (+4,3 pontos, dentro da variação de ±5 pontos entre blocos de seeds vista na Task 10). Os mudos
+foram a zero e os desencalhes caíram no fácil.
 
 Duelo de entrada (`tools/bs-duelo.mjs --cenario=entrada --seeds=1..50`), igual ao da Task 9 em todas as
 dificuldades: mira 0,57 / 0,40 / 0,27 s; 1º tiro 0,77 / 0,58 / 0,32 s; acerto 1,00 / 0,70 / 0,55 s.
@@ -74,7 +87,10 @@ Alavancas testadas e descartadas (30 seeds, junto com a #1; ruído de ±2–4 po
 
 ## Metas fora da faixa
 
-- **Vitória T no fácil: 41,9% (meta 45–55%), −3,1 pontos nas seeds 1..30.** Em 60 seeds o fácil fica em
+- **Vitória T no difícil: 58,3% (meta 45–55%), +3,3 pontos no código final.** Era 54,0% no fim da Task 10; a
+  correção da revisão (posto) subiu o difícil. Não houve nova rodada de balanceamento: fica para o dono decidir
+  junto com o headshot, que mexe nos mesmos números.
+- **Vitória T no fácil: 42,2% no código final (41,9% no fim da Task 10; meta 45–55%), −3,1 pontos nas seeds 1..30.** Em 60 seeds o fácil fica em
   44,4% (−0,6). A diferença entre fácil e difícil (~11–13 pontos) é maior que a largura da faixa (10), e quase
   toda alavanca permitida move as três dificuldades juntas. As duas que separam (bônus de derrota e desvio do
   posto) somam ~+2 a +3 pontos no fácil. Mais do que isso tira o difícil da faixa (ver tabela acima).
@@ -93,7 +109,7 @@ Alavancas testadas e descartadas (30 seeds, junto com a #1; ruído de ±2–4 po
   `MULT_PARTE` e `COLETE` não são alavancas desta tarefa: fechar a faixa exige o dono mudar o dano por parte, o
   colete ou a regra "tronco escondido → cabeça". As mudanças desta tarefa não pioraram o headshot nem o primeiro
   acerto além do ruído (headshot −0,8 / +1,2 / −0,8 ponto; 1º acerto −0,02 / +0,01 / +0,02 s).
-- **Mudos: 2 / 1 / 1 (meta 0), deixado assim de propósito (ruling R14).** Os quatro casos (fácil seeds 3 e 19, médio
+- **Mudos: 0 / 0 / 0 no código final.** Na Task 10 eram 2 / 1 / 1, deixados de propósito (ruling R14): Os quatro casos (fácil seeds 3 e 19, médio
   seed 4, difícil seed 23) vêm do `recuo`. O bot leva tiro a ~38 m, fica com hp abaixo de `HP_RECUO` e corre para a
   cobertura. Em movimento, o `recuo` não chama `atacar`, e o atirador continua visível por ~2–2,7 s. Por isso o bot
   passa de 3 s "com alvo visto" sem disparar. A Task 10b descartou a hipótese anterior, de que `vistoHa` zerava a
