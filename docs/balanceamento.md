@@ -93,9 +93,12 @@ Alavancas testadas e descartadas (30 seeds, junto com a #1; ruído de ±2–4 po
   `MULT_PARTE` e `COLETE` não são alavancas desta tarefa: fechar a faixa exige o dono mudar o dano por parte, o
   colete ou a regra "tronco escondido → cabeça". As mudanças desta tarefa não pioraram o headshot nem o primeiro
   acerto além do ruído (headshot −0,8 / +1,2 / −0,8 ponto; 1º acerto −0,02 / +0,01 / +0,02 s).
-- **Mudos: 2 / 1 / 1 (meta 0).** Os três casos inspecionados (fácil seed 3, médio seed 4, difícil seed 23) têm o mesmo padrão: bot em combate com a arma cheia, alvo a
-  22–38 m que aparece e some atrás de uma caixa baixa. O alvo conta como visto em mais de 3 s somados, mas
-  `vistoHa` volta a zero a cada perda e não chega à `reacao` (fica em 0,25–0,45 s). É a percepção intermitente, a
-  mesma classe da Task 9, e não vem das alavancas desta tarefa. Fica para o Plano 2b.
+- **Mudos: 2 / 1 / 1 (meta 0), deixado assim de propósito (ruling R14).** Os quatro casos (fácil seeds 3 e 19, médio
+  seed 4, difícil seed 23) vêm do `recuo`. O bot leva tiro a ~38 m, fica com hp abaixo de `HP_RECUO` e corre para a
+  cobertura. Em movimento, o `recuo` não chama `atacar`, e o atirador continua visível por ~2–2,7 s. Por isso o bot
+  passa de 3 s "com alvo visto" sem disparar. A Task 10b descartou a hipótese anterior, de que `vistoHa` zerava a
+  cada re-peek do mesmo alvo: com o alvo guardado, a reação não zera (regressão em `bots-mira.test.ts`). Não muda
+  porque correr para a cobertura sem atirar, depois de levar tiro de longe, é comportamento humano. São 4 bots em 90
+  partidas.
 - **Desencalhes: 0,13 / 0,00 / 0,03 por partida** (calibrada: 0,20 / 0 / 0). A armadilha da C4 (R10) foi corrigida
   (mudança 0). O que sobra são casos isolados (5 desencalhes em 90 partidas).

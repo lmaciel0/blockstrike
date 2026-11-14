@@ -240,3 +240,35 @@ test('mira: troca para inimigo visto há pouco conta a reação desde a primeira
   expect(b.cerebro!.alvoId).toBe(a.id);
   expect(b.cerebro!.vistoHa, 'reação zerada na volta de A').toBeGreaterThan(1.4);
 });
+
+// Alvo espiando atrás de uma caixa: visível 0,3 s, escondido 0,2 s, por 3 s. Com o alvo guardado (`alvoId`), a reação
+// não zera na volta e soma os quadros visíveis até a `reacao`, então o bot atira. Regressão (ruling R14).
+test('mira: re-peek do mesmo alvo não zera a reação', () => {
+  for (const nome of NOMES) {
+    const fora = noYaw(RAD30, 15);
+    const atras = { x: fora.x + 5, y: 0, z: fora.z }; // atrás da caixa (mesma cena de "alvo escondido")
+    const { mundo, b, a } = cena({ caixas: [chao, parede(-4, -10, -1, -9)], alvo: fora });
+    const quadros = rodar(mundo, b, nome, 180, criarRng(17), (i) => {
+      a.pos = { ...(i % 30 < 18 ? fora : atras) };
+    });
+    expect(quadros.some((q) => q.cmd.atirar), `${nome}: nunca atirou no alvo que espia`).toBeTruthy();
+  }
+});
+
+// Visto 0,3 s, some por mais que a janela de percepção (2 s): ao voltar, conta como novo e a reação começa do zero.
+test('mira: inimigo nunca visto começa a reação do zero', () => {
+  for (const nome of NOMES) {
+    const fora = noYaw(RAD30, 15);
+    const atras = { x: fora.x + 5, y: 0, z: fora.z };
+    const { mundo, b, a } = cena({ caixas: [chao, parede(-4, -10, -1, -9)], alvo: fora });
+    const VOLTA = 18 + 150; // 0,3 s visível + 2,5 s escondido
+    const quadros = rodar(mundo, b, nome, VOLTA + 60, criarRng(19), (i) => {
+      a.pos = { ...(i < 18 || i >= VOLTA ? fora : atras) };
+    });
+    const dif = DIFICULDADE[nome];
+    expect(quadros[VOLTA].vistoHa, `${nome}: reação não começou do zero`).toBeLessThanOrEqual(DT + 1e-9);
+    for (const q of quadros.slice(VOLTA)) {
+      if (q.cmd.atirar) expect(q.t - quadros[VOLTA].t, `${nome}: atirou cedo`).toBeGreaterThanOrEqual(dif.reacao - 1e-9);
+    }
+  }
+});
