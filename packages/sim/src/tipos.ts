@@ -143,6 +143,9 @@ export interface ItemCompra extends ItemLoja { id: IdItem; motivo: MotivoCompra 
 
 // ---------- Entidade, comandos e cérebro ----------
 
+/** Onde um inimigo visto estava num instante (`registrarVistos`, percepcao.ts); a mira usa a amostra atrasada. */
+export interface Amostra { id: number; t: number; pos: Vec3; agachado: boolean }
+
 /**
  * `criarEntidade` (mundo.ts): jogador ou bot. `id` é também o índice em `mundo.entidades`.
  * Os opcionais nascem depois: `slotAnterior`/`cegoAte`/`cegoDur` em `posicionarParaRound`, `dinheiro`/`equip`

@@ -32,6 +32,9 @@ export { criarArma, calcularSpread, velocidadeDe, SAQUE } from './armas.js';
 export { criarGrafo } from './navegacao.js';
 export { criarCerebro, pensar } from './bots.js';
 
+// Percepção atrasada: o que o bot viu de cada inimigo e onde ele estava `atraso` segundos atrás.
+export { JANELA_PERCEPCAO, percebido, registrarVistos } from './percepcao.js';
+
 // Partida: rounds, lados e a C4.
 export { criarPartida, ladoAzul, terroristasDe, tickPartida } from './rounds.js';
 export { criarBomba, acaoPossivel, siteEm } from './bomba.js';

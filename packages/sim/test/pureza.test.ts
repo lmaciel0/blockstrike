@@ -41,7 +41,7 @@ test('o glob enxerga todos os módulos da simulação', () => {
   const nomes = Object.keys(fontes).map((c) => c.replace('../src/', '')).sort();
   expect(nomes).toEqual([
     'armas.ts', 'bomba.ts', 'bots.ts', 'config.ts', 'economia.ts', 'fisica.ts', 'granadas.ts', 'index.ts',
-    'mapa.ts', 'mundo.ts', 'navegacao.ts', 'relogio.ts', 'rng.ts', 'rounds.ts', 'tipos.ts',
+    'mapa.ts', 'mundo.ts', 'navegacao.ts', 'percepcao.ts', 'relogio.ts', 'rng.ts', 'rounds.ts', 'tipos.ts',
   ]);
   for (const texto of Object.values(fontes)) expect(texto.length).toBeGreaterThan(0);
 });

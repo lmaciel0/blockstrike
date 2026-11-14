@@ -1,0 +1,75 @@
+import { describe, expect, test } from 'vitest';
+import { JANELA_PERCEPCAO, percebido, registrarVistos } from '../src/percepcao.js';
+import type { Amostra } from '../src/tipos.js';
+
+const DT = 1 / 60;
+const alvo = (id: number, x: number) => ({ id, pos: { x, y: 0, z: 0 }, agachado: false });
+
+// Simula `passos` ticks com o alvo `id` visível, andando a `vel` m/s em x, e devolve o tempo final.
+function ver(amostras: Amostra[], id: number, de: number, passos: number, vel = 0): number {
+  let t = de;
+  for (let i = 0; i < passos; i++) {
+    registrarVistos(amostras, [alvo(id, vel * t)], t, JANELA_PERCEPCAO);
+    t += DT;
+  }
+  return t;
+}
+
+describe('percepção atrasada', () => {
+  test('percebido: null antes do atraso', () => {
+    const amostras: Amostra[] = [];
+    ver(amostras, 1, 0, 60);
+    expect(percebido(amostras, 1, 0.39, 0.4)).toBeNull();
+    const a = percebido(amostras, 1, 0.41, 0.4);
+    expect(a).not.toBeNull();
+    expect(a!.t).toBeLessThanOrEqual(0.01 + 1e-9);
+  });
+
+  test('percebido: alvo andando fica atrás pelo atraso', () => {
+    const amostras: Amostra[] = [];
+    ver(amostras, 1, 0, 61, 5); // amostras de t=0 a t=1
+    const a = percebido(amostras, 1, 1, 0.4);
+    expect(a).not.toBeNull();
+    expect(Math.abs(a!.pos.x - 5 * 0.6)).toBeLessThanOrEqual(5 * DT);
+  });
+
+  test('percebido: alvo escondido mantém a última amostra', () => {
+    const amostras: Amostra[] = [];
+    ver(amostras, 1, 0, 31, 5); // visto até t=0,5
+    const a = percebido(amostras, 1, 1.2, 0.4);
+    expect(a).not.toBeNull();
+    expect(a!.t).toBeLessThanOrEqual(0.5 + 1e-9);
+    expect(a!.t).toBeGreaterThan(0.5 - 2 * DT); // a última, não uma antiga
+  });
+
+  test('registrarVistos: poda o que passou da janela', () => {
+    const amostras: Amostra[] = [];
+    registrarVistos(amostras, [alvo(1, 0)], 0, 2);
+    registrarVistos(amostras, [alvo(1, 1)], 1, 2);
+    registrarVistos(amostras, [], 2.1, 2);
+    expect(amostras.map((a) => a.t)).toEqual([1]);
+  });
+
+  test('percebido: id nunca visto → null', () => {
+    const amostras: Amostra[] = [];
+    ver(amostras, 1, 0, 60);
+    expect(percebido(amostras, 2, 1, 0.4)).toBeNull();
+  });
+
+  test('registrarVistos: copia a posição (não guarda a referência) e o agachado', () => {
+    const amostras: Amostra[] = [];
+    const v = { id: 3, pos: { x: 1, y: 0, z: 2 }, agachado: true };
+    registrarVistos(amostras, [v], 0, 2);
+    v.pos.x = 99;
+    expect(amostras[0]!.pos.x).toBe(1);
+    expect(amostras[0]!.agachado).toBe(true);
+  });
+
+  test('percebido: com vários ids, devolve só o do id pedido', () => {
+    const amostras: Amostra[] = [];
+    registrarVistos(amostras, [alvo(1, 10), alvo(2, 20)], 0, 2);
+    registrarVistos(amostras, [alvo(1, 11), alvo(2, 21)], 0.5, 2);
+    expect(percebido(amostras, 2, 0.8, 0.2)!.pos.x).toBe(21);
+    expect(percebido(amostras, 1, 0.8, 0.2)!.pos.x).toBe(11);
+  });
+});
