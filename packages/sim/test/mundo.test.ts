@@ -216,6 +216,7 @@ test('rifle no tronco tira 36', () => {
 test('headshot de rifle mata', () => {
   const m = novo();
   const alvo = alvoEm(m, 5, 0, 0, -10, 'laranja');
+  alvo.hp = 90; // cabeça ×2,5: rifle (36) dá 90 na cabeça, não mata mais um alvo com 100 de vida
   const ev = atirar(m, { pitch: pitchPara(1.6, 10) });
   expect(alvo.vivo).toBe(false);
   const morte = ev.find((e) => e.tipo === 'morte');

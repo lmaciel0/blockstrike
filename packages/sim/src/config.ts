@@ -99,7 +99,7 @@ export const MAX_GRANADAS: Record<TipoGranada, number> = { smoke: 1, flash: 2, h
 export const COLETE = { pontos: 100, corpo: 0.55, cabeca: 0.6 };
 
 // Multiplicador de dano por parte do corpo atingida.
-export const MULT_PARTE: Record<ParteCorpo, number> = { cabeca: 4, tronco: 1, pernas: 0.75 };
+export const MULT_PARTE: Record<ParteCorpo, number> = { cabeca: 2.5, tronco: 1, pernas: 0.75 };
 
 // Campo de visão sem zoom (graus); a luneta usa o `zoomFov` da arma.
 export const FOV_PADRAO = 75;
