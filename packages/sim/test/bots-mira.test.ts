@@ -298,3 +298,23 @@ test('mira: tronco escondido, só o difícil troca para a cabeça', () => {
     }
   }
 });
+
+// Pistola (arma não automática) e tronco escondido, cabeça à vista, a 25 m (além do alcance ideal de 15 m): sem
+// visada o bot não conta como "disparando", então não fica parado olhando o tronco: segue avançando e não atira.
+test('mira: tronco escondido sem troca não trava o bot parado (pistola)', () => {
+  for (const nome of ['facil', 'medio'] as NomeDificuldade[]) {
+    const caixa: Caixa = { min: { x: -3, y: 0, z: -24 }, max: { x: 3, y: 1.2, z: -23 }, cor: 1 };
+    const { mundo, b } = cena({ caixas: [chao, caixa], alvo: { x: 0, y: 0, z: -25 } });
+    b.slot = 'pistola';
+    const reacao = DIFICULDADE[nome].reacao;
+    const quadros = rodar(mundo, b, nome, 240, criarRng(23), () => {
+      if (b.cerebro) b.cerebro.cabeca = false;
+      b.slot = 'pistola';
+    });
+    const prontos = quadros.filter((q) => q.vistoHa >= reacao);
+    expect(prontos.length, `${nome}: nunca passou da reação`).toBeGreaterThan(0);
+    expect(quadros.some((q) => q.cmd.atirar), `${nome}: atirou no tronco escondido`).toBeFalsy();
+    expect(b.cerebro!.disparando, `${nome}: travado como disparando sem visada`).toBeFalsy();
+    expect(Math.hypot(b.pos.x, b.pos.z), `${nome}: não avançou`).toBeGreaterThan(1);
+  }
+});

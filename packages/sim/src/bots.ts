@@ -624,10 +624,11 @@ function atacar(
       c.rajada = 3 + Math.floor(rng() * 3);
     }
     cmd.atirar = c.emRajada && pronto;
-    c.disparando = c.emRajada && c.vistoHa >= dif.reacao;
+    c.disparando = c.emRajada && c.vistoHa >= dif.reacao && !mira?.semVisada;
   } else {
     cmd.atirar = pronto && !c.gatilho && agora >= arma.prontaEm;
-    c.disparando = c.vistoHa >= dif.reacao && agora >= arma.prontaEm - 0.15;
+    // Sem visada do ponto mirado não há o que disparar: o bot continua avançando (`avancar`) em vez de travar.
+    c.disparando = c.vistoHa >= dif.reacao && agora >= arma.prontaEm - 0.15 && !mira?.semVisada;
   }
   c.gatilho = cmd.atirar;
   if (strafe && (familia(arma.tipo) === 'smg' || arma.tipo === 'escopeta')) {
