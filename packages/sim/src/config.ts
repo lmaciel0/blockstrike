@@ -172,6 +172,8 @@ export const familia = (tipo: TipoArma): TipoArma => ARMAS[tipo]?.familia ?? tip
 
 // reacao em segundos (>= mao.atraso); chanceCabeca em [0,1]; alturaTronco em m (ponto de mira no corpo);
 // toleranciaTiro em rad; trocaParaCabeca = mira na cabeça quando o tronco está escondido (só o difícil); mao = perfil da mão virtual (atraso para começar a mirar, mola, aceleração, tremor e previsão).
+// chanceCabeca do difícil (0,1) fica abaixo da do médio porque o `trocaParaCabeca` já leva parte da mira à cabeça:
+// com 0,35 o headshot do difícil dava 60% (meta 40–50%); 0,2 → 55%, 0,1 → 48% (Task H3, 30 seeds).
 export const DIFICULDADE: Record<NomeDificuldade, Dificuldade> = {
   facil: {
     reacao: 0.75, chanceCabeca: 0.02, alturaTronco: 0.95, toleranciaTiro: 0.05, trocaParaCabeca: false,
@@ -182,7 +184,7 @@ export const DIFICULDADE: Record<NomeDificuldade, Dificuldade> = {
     mao: { atraso: 0.35, firmeza: 12, amortecimento: 0.6, acelMax: 90, tremor: 0.008, previsao: 0.85 },
   },
   dificil: {
-    reacao: 0.3, chanceCabeca: 0.35, alturaTronco: 1.0, toleranciaTiro: 0.025, trocaParaCabeca: true,
+    reacao: 0.3, chanceCabeca: 0.1, alturaTronco: 1.0, toleranciaTiro: 0.025, trocaParaCabeca: true,
     mao: { atraso: 0.22, firmeza: 16, amortecimento: 0.7, acelMax: 140, tremor: 0.005, previsao: 0.85 },
   },
 };

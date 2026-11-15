@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { criarMundo, posicionarParaRound, passo, vivosPorTime } from '../src/mundo.js';
 import { olho, direcao } from '../src/fisica.js';
 import { MAPA } from '../src/mapa.js';
-import { criarArma } from '../src/armas.js';
+import { criarArma, danoDe } from '../src/armas.js';
 import { criarRng } from '../src/rng.js';
 import { JOGADOR, NOMES_BOTS } from '../src/config.js';
 import type {
@@ -216,7 +216,7 @@ test('rifle no tronco tira 36', () => {
 test('headshot de rifle mata', () => {
   const m = novo();
   const alvo = alvoEm(m, 5, 0, 0, -10, 'laranja');
-  alvo.hp = 90; // cabeça ×2,5: rifle (36) dá 90 na cabeça, não mata mais um alvo com 100 de vida
+  alvo.hp = danoDe('rifle', 'cabeca'); // cabeça ×2,5: rifle (36) dá 90 na cabeça, não mata mais um alvo com 100 de vida
   const ev = atirar(m, { pitch: pitchPara(1.6, 10) });
   expect(alvo.vivo).toBe(false);
   const morte = ev.find((e) => e.tipo === 'morte');
@@ -224,6 +224,20 @@ test('headshot de rifle mata', () => {
   expect(jogador(m).kills).toBe(1);
   expect(jogador(m).killsCabeca).toBe(1);
   expect(alvo.mortes).toBe(1);
+});
+
+test('headshot de rifle sem capacete em alvo com 100 de vida não mata', () => {
+  const m = novo();
+  const alvo = alvoEm(m, 5, 0, 0, -10, 'laranja');
+  expect(alvo.hp).toBe(100);
+  const ev = atirar(m, { pitch: pitchPara(1.6, 10) });
+  expect(alvo.vivo).toBe(true);
+  expect(alvo.hp).toBe(100 - danoDe('rifle', 'cabeca'));
+  expect(alvo.hp).toBe(10);
+  const acerto = ev.find((e) => e.tipo === 'acerto');
+  expect(acerto!.parte).toBe('cabeca');
+  expect(acerto!.capacete).toBe(false);
+  expect(ev.some((e) => e.tipo === 'morte')).toBe(false);
 });
 
 test('fogo amigo desligado', () => {
