@@ -164,17 +164,32 @@ export function escolherRota(grafo: Grafo, de: number, para: number, anteriores:
   return aceita(primeira) ? primeira : curta;
 }
 
+// Metade do mapa onde o bot nasceu (índice do `espera`): z >= 0 é a casa 0.
+function casaDeNascimento(ent: Entidade): 0 | 1 {
+  return ent.pos.z >= 0 ? 0 : 1;
+}
+
+// Site que o CT segura antes da plantada: pela paridade do id (par = A, ímpar = B).
+function siteDoCT(ent: Entidade): Site {
+  return ent.id % 2 === 0 ? 'A' : 'B';
+}
+
+// Colegas de índice menor no site do CT: mesmo time e mesma paridade de id, id menor, por id crescente, vivos ou não.
+function colegasDoSite(ent: Entidade, mundo: Mundo): Entidade[] {
+  return mundo.entidades.filter((o) => o.time === ent.time && o.id % 2 === ent.id % 2 && o.id < ent.id)
+    .sort((a, b) => a.id - b.id);
+}
+
 // Rota de ida do CT até o `espera`: cada colega do mesmo site de índice menor tem a sua recalculada pela mesma regra,
-// e o CT desvia delas. Só depende de ids, posições de nascimento e do grafo.
+// e o CT desvia delas. Elas batem com as que os colegas realmente têm só porque `criarCerebro` roda logo depois de
+// `posicionarParaRound` (todos no spawn).
 function rotaDeCT(ent: Entidade, grafo: Grafo, caixas: Caixa[], destino: number | null, mundo: Mundo): number[] {
   const de = waypointPerto(grafo, ent.pos, caixas);
   if (de === null || destino === null) return [];
   const rotas: number[][] = [];
-  const colegas = mundo.entidades.filter((o) => o.time === ent.time && o.id % 2 === ent.id % 2 && o.id < ent.id)
-    .sort((a, b) => a.id - b.id);
-  for (const o of colegas) {
+  for (const o of colegasDoSite(ent, mundo)) {
     const deO = waypointPerto(grafo, o.pos, caixas);
-    const destinoO = destinoBomba(o, mundo, o.pos.z >= 0 ? 0 : 1)?.waypoint;
+    const destinoO = destinoBomba(o, mundo, casaDeNascimento(o))?.waypoint;
     if (deO === null || destinoO === undefined) continue;
     rotas.push(escolherRota(grafo, deO, destinoO, rotas));
   }
@@ -203,7 +218,7 @@ export function criarCerebro(
 ): Cerebro {
   const indice = ent.id % 5;
   const ordem = [1, 2, 0]; // meio, túnel, corredor
-  const casaZ = ent.pos.z >= 0 ? 0 : 1; // metade do mapa onde nasceu
+  const casaZ = casaDeNascimento(ent); // metade do mapa onde nasceu
   // `ent.cerebro` ainda é o do round anterior (outra metade depois da troca de lados): passa a casa nova.
   const bomba = mundo ? destinoBomba(ent, mundo, casaZ) : null;
   const destino = bomba ? bomba.waypoint! : objetivo(ent, grafo, rng, ordem[indice % 3]);
@@ -272,7 +287,7 @@ export function ouvir(ent: Entidade, mundo: Mundo, c: Pick<Cerebro, 'ouvidoEm'>)
 // A chave muda quando o objetivo muda (C4 plantada, caiu, outro bombsite): aí o bot refaz a rota.
 // `casaZ`: metade onde o bot nasceu neste round (índice do `espera`).
 function destinoBomba(
-  ent: Entidade, mundo: Mundo, casaZ: 0 | 1 = ent.cerebro?.casaZ ?? (ent.pos.z >= 0 ? 0 : 1),
+  ent: Entidade, mundo: Mundo, casaZ: 0 | 1 = ent.cerebro?.casaZ ?? casaDeNascimento(ent),
 ): DestinoBomba | null {
   const b = mundo.bomba;
   if (!b || b.explodiu || b.desarmada) return null;
@@ -294,7 +309,7 @@ function destinoBomba(
   }
   if (b.plantada) return { chave: `site:${b.site}`, waypoint: bombsiteDe(mundo.mapa, b.site)?.waypoint };
   // Antes da plantada, o CT segura o site de um pouco atrás, do lado da própria base (mira o corredor de entrada).
-  const site = ent.id % 2 === 0 ? 'A' : 'B';
+  const site = siteDoCT(ent);
   return { chave: `espera:${site}`, waypoint: sites[site].espera[casaZ] };
 }
 
@@ -315,7 +330,7 @@ function espalharNoSite(ent: Entidade, mundo: Mundo, site: Site | null): TarefaB
 // Posição do CT entre os do seu time com a mesma paridade de id (a regra de site de `destinoBomba`), por id
 // crescente, vivos ou não: não muda quando um colega morre.
 function indiceNoSite(ent: Entidade, mundo: Mundo): number {
-  return mundo.entidades.filter((o) => o.time === ent.time && o.id % 2 === ent.id % 2 && o.id < ent.id).length;
+  return colegasDoSite(ent, mundo).length;
 }
 
 // Pontos candidatos do posto, em ordem fixa, e os que estão livres: fora de parede e com visada desde o `espera`.
