@@ -29,6 +29,9 @@ const ESPERA_COBERTURA: [number, number] = [1.5, 3];
 // Onde cada T fica no bombsite (m em volta do centro, pelo índice no time): espalhados, não empilhados.
 const ESPALHAR: [number, number][] = [[0, 0], [-3.5, -2.5], [3.5, -2.5], [-3.5, 2.5], [3.5, 2.5]];
 const PERTO_DO_SITE = 8; // m do centro: a partir daqui o T vai para o seu ponto no site
+// Candidatos do posto (m): ao lado do `espera` (perpendicular à mira) e depois para trás (contra a mira).
+const OFFSET_POSTO = [0, 3, -3, 6, -6, 9, -9];
+const RECUO_POSTO = [3, 6];
 const ESPERA_RECUO = 5;
 const LIMITE_ROTA = 20; // |x| que separa corredor, meio e túnel
 const REFAZER_ROTA = 2; // s entre recálculos da rota até o alvo
@@ -263,6 +266,57 @@ function espalharNoSite(ent: Entidade, mundo: Mundo, site: Site | null): TarefaB
   return veDireto(ent, mundo, ponto) ? { direto: ponto, segurar: true } : { segurar: true };
 }
 
+// Posição do CT entre os do seu time com a mesma paridade de id (a regra de site de `destinoBomba`), por id
+// crescente, vivos ou não: não muda quando um colega morre.
+function indiceNoSite(ent: Entidade, mundo: Mundo): number {
+  return mundo.entidades.filter((o) => o.time === ent.time && o.id % 2 === ent.id % 2 && o.id < ent.id).length;
+}
+
+// Pontos candidatos do posto, em ordem fixa, e os que estão livres: fora de parede e com visada desde o `espera`.
+// Só depende da geometria do mapa (não de onde o CT está), então o ponto de cada índice não muda no round.
+// Nenhum livre → o próprio `espera`.
+export function pontosLivresDoPosto(mundo: Mundo, site: Site, casaZ: 0 | 1): PontoXZ[] {
+  const s = mundo.mapa.bombsites[site];
+  const w = mundo.mapa.waypoints[s.espera[casaZ]];
+  const m = s.mira[casaZ];
+  const n = Math.hypot(m.x - w.x, m.z - w.z) || 1;
+  const d = { x: (m.x - w.x) / n, z: (m.z - w.z) / n };
+  const candidatos: PontoXZ[] = [
+    ...OFFSET_POSTO.map((o) => ({ x: w.x - d.z * o, z: w.z + d.x * o })),
+    ...RECUO_POSTO.map((r) => ({ x: w.x - d.x * r, z: w.z - d.z * r })),
+  ];
+  const cintura = (p: PontoXZ): Vec3 => ({ x: p.x, y: 0.9, z: p.z });
+  return candidatos.filter((p) => !dentroDeParede(mundo, p) && temVisada(cintura(w), cintura(p), mundo.mapa.caixas));
+}
+
+// Ponto do CT no posto: o livre de índice `indiceNoSite % livres.length`; sem nenhum livre, o `espera`.
+export function pontoDoPosto(ent: Entidade, mundo: Mundo, site: Site): PontoXZ {
+  const casaZ = ent.cerebro!.casaZ;
+  const livres = pontosLivresDoPosto(mundo, site, casaZ);
+  if (!livres.length) {
+    const w = mundo.mapa.waypoints[mundo.mapa.bombsites[site].espera[casaZ]];
+    return { x: w.x, z: w.z };
+  }
+  return livres[indiceNoSite(ent, mundo) % livres.length];
+}
+
+// Ponto do chão dentro de uma parede (altura da cintura)?
+function dentroDeParede(mundo: Mundo, p: PontoXZ): boolean {
+  return mundo.mapa.caixas.some((b) => b.max.y > 0.01 && b.min.y < 0.9 && b.max.y > 0.9 &&
+    p.x > b.min.x && p.x < b.max.x && p.z > b.min.z && p.z < b.max.z);
+}
+
+// CT antes da plantada, perto do `espera`: vai ao seu ponto (pontoDoPosto) e fica lá; ponto bloqueado, fica no waypoint.
+function postoDoCT(ent: Entidade, mundo: Mundo, chave: ChaveBomba | null): TarefaBomba {
+  if (!chave?.startsWith('espera:')) return { segurar: true };
+  const site = chave.slice('espera:'.length) as Site;
+  const espera = mundo.mapa.waypoints[mundo.mapa.bombsites[site].espera[ent.cerebro!.casaZ]];
+  if (distXZ(ent.pos, espera) > PERTO_DO_SITE) return { segurar: true };
+  const ponto = pontoDoPosto(ent, mundo, site);
+  if (distXZ(ent.pos, ponto) < 0.6) return { parado: true, segurar: true };
+  return veDireto(ent, mundo, ponto) ? { direto: ponto, segurar: true } : { segurar: true };
+}
+
 // Ações da C4 enquanto o bot não tem inimigo à vista. Devolve { direto?, parado?, segurar? } ou null:
 // direto = anda reto até o ponto; parado = fica onde está (planta/desarma); segurar = rota acabou, espera.
 function tarefaBomba(ent: Entidade, mundo: Mundo, cmd: Comandos): TarefaBomba | null {
@@ -280,7 +334,7 @@ function tarefaBomba(ent: Entidade, mundo: Mundo, cmd: Comandos): TarefaBomba | 
     }
     return b.portador === null && b.pos ? null : espalharNoSite(ent, mundo, b.siteAlvo);
   }
-  if (!b.plantada) return { segurar: true };
+  if (!b.plantada) return postoDoCT(ent, mundo, ent.cerebro?.chaveBomba ?? null);
   const d = distXZ(ent.pos, b.pos!);
   if (d <= BOMBA.raioAcao - 0.3) {
     if (!b.acao || b.acao.id === ent.id) cmd.usar = true; // só um CT desarma; o resto cobre
@@ -748,6 +802,8 @@ export function pensar(
       destino = tarefa.direto;
     } else if (tarefa?.parado) {
       destino = null;
+      // CT antes da plantada que chegou ao seu ponto: fica no posto segurando o ângulo.
+      if (c.chaveBomba?.startsWith('espera:')) c.estado = 'posto';
     } else if (!destino && !tarefa?.segurar) {
       voltarParaRota(ent, c, grafo, caixas, proximoObjetivo(ent, c, mundo, grafo, rng));
       destino = seguirRota(ent, c, grafo, dt, cmd);
