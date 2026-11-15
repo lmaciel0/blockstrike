@@ -1,6 +1,9 @@
 // Gera o baseline (passo fixo pelo relógio, `--dt=relogio`) num arquivo temporário e compara com
-// tools/baseline/ts-relogio.json. (tools/baseline/js-dt60.json, do dt fixo 1/60 anterior ao relógio, fica
-// como registro histórico e não é mais conferido.)
+// tools/baseline/ts-plano2.json. (tools/baseline/ts-relogio.json, a referência anterior ao Plano 2, e
+// tools/baseline/js-dt60.json, do dt fixo 1/60 anterior ao relógio, ficam como registro histórico e não são
+// mais conferidos: o Plano 2 muda o comportamento dos bots de propósito, então quem muda comportamento
+// regenera ts-plano2.json com `node --import tsx tools/baseline.mjs --out=tools/baseline/ts-plano2.json
+// --seeds=1..30 --dt=relogio`.)
 // A referência tem 30 seeds por dificuldade; por padrão só as seeds 1..5 são geradas de novo e comparadas
 // com as partidas das mesmas seeds na referência. `--seeds=1..30` confere tudo (leva uns 20 min).
 // Imprime IDENTICO ou o diff; sai com código 1 se divergir. uso: npm run baseline:check [-- --seeds=1..30]
@@ -11,7 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const referencia = path.join(raiz, 'tools/baseline/ts-relogio.json');
+const referencia = path.join(raiz, 'tools/baseline/ts-plano2.json');
 const seeds = process.argv.slice(2).find((a) => a.startsWith('--seeds='))?.slice('--seeds='.length) ?? '1..5';
 const pasta = mkdtempSync(path.join(tmpdir(), 'bs-baseline-'));
 const gerado = path.join(pasta, 'gerado.json');

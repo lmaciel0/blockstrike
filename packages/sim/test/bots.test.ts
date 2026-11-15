@@ -5,6 +5,7 @@ import { criarGrafo } from '../src/navegacao.js';
 import { criarArma } from '../src/armas.js';
 import { olho } from '../src/fisica.js';
 import { MAPA } from '../src/mapa.js';
+import { DIFICULDADE } from '../src/config.js';
 import { criarRng } from '../src/rng.js';
 import type {
   Arma, ArmasEntidade, Caixa, Comandos, Dificuldade, Entidade, Evento, Grafo, Mundo, NomeDificuldade, Rng, TipoPrimaria,
@@ -95,7 +96,7 @@ test('criarCerebro começa em rota até a metade inimiga', () => {
     const c = criarCerebro(e, grafoMapa, rng);
     expect(c.estado).toBe('rota');
     expect(c.alvoId).toBe(null);
-    expect(c.ultimoDanoDe).toBe(null);
+    expect(c.ultimoDano).toBe(null);
     expect(c.rota.length > 1).toBeTruthy();
     const fim = grafoMapa.nos[c.rota.at(-1)!];
     expect(Math.sign(fim.z) === -Math.sign(e.pos.z) || fim.z === 0, `bot ${e.id} vai para ${fim.z}`).toBeTruthy();
@@ -138,7 +139,9 @@ test('não vê pelas costas a 20 m; vê a 2 m', () => {
 
 const angulo = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a));
 
-test('erro de mira humano no difícil (média entre 0,005 e 0,04 rad)', () => {
+// Reescrito no Plano 2: o erro gaussiano sorteado a cada 0,15 s (`erroMira`) saiu. Com o alvo parado, o que sobra
+// em regime é o tremor da mão virtual (0,005 rad no difícil): a mira nunca fica cravada, mas fica perto.
+test('mira humana no difícil: tremor da mão em regime (média entre 0,001 e 0,02 rad)', () => {
   const { mundo, b, alvo } = cena({ inimigo: { x: 0, z: -15 } });
   const rng = criarRng(11);
   const o = olho(b);
@@ -149,22 +152,29 @@ test('erro de mira humano no difícil (média entre 0,005 e 0,04 rad)', () => {
     b.yaw = cmd.yaw;
     b.pitch = cmd.pitch;
     mundo.tempo += DT;
-    soma += Math.abs(angulo(cmd.yaw - certo));
+    if (i >= 100) soma += Math.abs(angulo(cmd.yaw - certo)); // depois de 5 s, a mão já chegou
   }
-  const media = soma / 200;
-  expect(media > 0.005 && media < 0.04, `média ${media}`).toBeTruthy();
+  const media = soma / 100;
+  expect(media > 0.001 && media < 0.02, `média ${media}`).toBeTruthy();
 });
 
-test('giro limitado a 8 rad/s com alvo às costas', () => {
+// Reescrito no Plano 2: o teto fixo de 8 rad/s (`girar`) não vale mais para a mira; quem limita é a aceleração da
+// mão virtual. O passo de yaw só cresce acelMax·dt² de um quadro para o outro (sem teleporte de mira).
+test('giro da mira limitado pela aceleração da mão com alvo às costas', () => {
   const { mundo, b } = cena({ inimigo: { x: 0, z: 2 } });
   const rng = criarRng(12);
+  const { acelMax } = DIFICULDADE.dificil.mao;
+  let giroAntes = 0;
   for (let i = 0; i < 20; i++) {
     const antes = b.yaw;
     const cmd = pensar(b, mundo, grafoMapa, 'dificil', DT, rng);
-    expect(Math.abs(cmd.yaw - antes) <= 8 * DT + 1e-9, `passo ${i}: ${cmd.yaw - antes}`).toBeTruthy();
+    const giro = cmd.yaw - antes;
+    expect(Math.abs(giro) <= Math.abs(giroAntes) + acelMax * DT * DT + 1e-9, `passo ${i}: ${giro}`).toBeTruthy();
+    giroAntes = giro;
     b.yaw = cmd.yaw;
     mundo.tempo += DT;
   }
+  expect(Math.abs(angulo(b.yaw - Math.PI)) < 0.1, `yaw final ${b.yaw}`).toBeTruthy();
 });
 
 // Parede x 5..6, z -6..2. Cobertura em (8,0) escondida de (0,-10); acesso por (5.5,4).
@@ -191,17 +201,21 @@ test('recua com hp baixo e agacha ao chegar na cobertura', () => {
   expect(cmds.at(-1)!.agachar, 'agachado na cobertura').toBeTruthy();
 });
 
+// Reescrito no Plano 2: o bot não recebe mais o id (nem a posição) de quem atirou, só a direção do tiro.
+// O atirador (0,-20) fica atrás do bot (yaw π): direção real 0 rad, e a cobertura é escolhida contra um
+// ponto a 15 m nessa direção ±15°, não contra a posição dele.
 test('dano sem visada leva à cobertura', () => {
   const { mundo, b } = cena({ caixas: caixasCobertura, yaw: Math.PI, inimigo: { x: 0, z: -20 } });
   pensar(b, mundo, grafoCobertura, 'medio', DT, criarRng(14));
-  b.cerebro!.ultimoDanoDe = 5;
+  b.cerebro!.ultimoDano = { angulo: 0, em: mundo.tempo };
   pensar(b, mundo, grafoCobertura, 'medio', DT, criarRng(14));
   expect(b.cerebro!.estado).toBe('cobertura');
-  expect(b.cerebro!.rota.at(-1)).toBe(1);
-  expect(b.cerebro!.ultimoDanoDe).toBe(null);
+  expect(b.cerebro!.rota.length > 1).toBeTruthy();
+  expect(b.cerebro!.ultimoDano).toBe(null);
 });
 
-test('mundo grava ultimoDanoDe no bot atingido', () => {
+// Reescrito no Plano 2: o mundo grava o ângulo (yaw da vítima para o atirador), não o id do atirador.
+test('mundo grava a direção do dano no bot atingido', () => {
   const { mundo, b } = cena({ inimigo: { x: 0, z: -10 } });
   b.cerebro = criarCerebro(b, grafoMapa, criarRng(15));
   const j = mundo.entidades[0];
@@ -215,7 +229,9 @@ test('mundo grava ultimoDanoDe no bot atingido', () => {
     zoom: false, recarregar: false, slot: null, yaw: 0, pitch: j.pitch } as Comandos;
   const ev = passo(mundo, DT, new Map([[0, cmd], [b.id, { ...cmd, atirar: false, yaw: b.yaw, pitch: 0 }]]));
   expect(ev.some((e) => e.tipo === 'acerto' && e.alvo === b.id), JSON.stringify(ev)).toBeTruthy();
-  expect(b.cerebro.ultimoDanoDe).toBe(0);
+  // Jogador em (0,10), bot em (0,-10): o atirador está em +z, yaw π (yaw 0 olha para -z).
+  expect(b.cerebro.ultimoDano).not.toBe(null);
+  expect(Math.abs(Math.abs(b.cerebro.ultimoDano!.angulo) - Math.PI)).toBeLessThan(1e-9);
 });
 
 // Integração: 5×5 bots por 120 s no médio (o limite de 10 s do original vira o timeout do Vitest).
@@ -262,7 +278,12 @@ test('recarrega com pente vazio mesmo em combate e nunca troca para a faca', () 
 test('compensação de recuo não sobe para a cabeça', () => {
   const { mundo, b, alvo } = cena({ inimigo: { x: 0, z: -20 } });
   alvo.hp = 1e9;
-  const ideal: Dificuldade = { reacao: 0.2, erroMira: 0, chanceCabeca: 0 };
+  // Reescrito no Plano 2: sem `erroMira`; o bot "ideal" agora é a mão do difícil sem tremor, que tenta
+  // compensar o recuo (a compensação sai atrasada pela inércia) e nunca escolhe a cabeça.
+  const ideal: Dificuldade = {
+    reacao: 0.2, chanceCabeca: 0, toleranciaTiro: 0.05,
+    mao: { atraso: 0.2, firmeza: 16, amortecimento: 0.7, acelMax: 140, tremor: 0, previsao: 0.7 },
+  };
   const rng = criarRng(31);
   const partes = { cabeca: 0, tronco: 0, pernas: 0 };
   for (let i = 0; i < 400; i++) {

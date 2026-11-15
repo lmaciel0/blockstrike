@@ -5,7 +5,7 @@ import { pensar, criarCerebro } from '../src/bots.js';
 import { criarGrafo } from '../src/navegacao.js';
 import { MAPA } from '../src/mapa.js';
 import { criarRng } from '../src/rng.js';
-import type { Bomba, Comandos, Evento, Grafo, Mundo, Rng, Site, Time } from '../src/tipos.js';
+import type { Bomba, Cerebro, Comandos, Evento, Grafo, Mundo, Rng, Site, Time } from '../src/tipos.js';
 
 interface Cena { mundo: Mundo & { bomba: Bomba }; grafo: Grafo; rng: Rng }
 
@@ -82,6 +82,23 @@ test('C4 solta: o terrorista mais perto a pega', () => {
   rodar(c, 40, () => b.portador !== null);
   expect(b.portador, 'ninguém pegou a C4').not.toBe(null);
   expect(b.portador).not.toBe(antigo.id);
+});
+
+// Armadilha da Task 9 (R10): a reta do centro do bot até a C4 passa a 0,3 m da quina da caixa
+// x -1,5..1,5, z -16..-14, mas o corpo (raio 0,35) encosta nela. O `direto` sobrepunha a rota e o
+// desencalhe não tirava o bot dali (29 desencalhes em 30 s, nunca pegava a C4).
+test('C4 solta atrás da quina: o desencalhe larga o caminho direto e o bot pega a C4', () => {
+  const c = cenario(3);
+  const b = c.mundo.bomba;
+  const bot = c.mundo.entidades.find((e) => e.time === 'laranja')!;
+  for (const e of c.mundo.entidades) if (e !== bot) { e.vivo = false; e.hp = 0; }
+  Object.assign(b, { portador: null, pos: { x: -1.82, y: 0, z: -12.04 } });
+  bot.pos.x = 1.75;
+  bot.pos.z = -16.4;
+  rodar(c, 20, () => b.portador !== null);
+  const desenc = (bot.cerebro as Cerebro).desencalhes;
+  expect(b.portador, `não pegou a C4 (pos ${bot.pos.x.toFixed(2)}, ${bot.pos.z.toFixed(2)}; desencalhes ${desenc})`).toBe(bot.id);
+  expect(desenc).toBeLessThanOrEqual(2);
 });
 
 test('sem mundo.bomba os bots seguem o comportamento antigo', () => {

@@ -6,6 +6,7 @@
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { mod } from '../tests/_repo.mjs';
+import { criarColetor } from './metricas.mjs';
 
 const DT_FIXO = 1 / 60;
 const DT_MIN = 1 / 144;
@@ -59,8 +60,9 @@ function fnv1a(texto) {
  * @param carregar (nome) => módulo do sim (mundo, bots, rounds, navegacao, mapa, config, rng, fisica, economia, bomba)
  * @param opcoesDt { modo: 'fixo', dt } | { modo: 'variavel', seed } (variável: dt sorteado em [1/144, 0.05])
  *   | { modo: 'relogio', seed } (os mesmos dt do `variavel` passam pelo relógio; a simulação anda em DT_SIM)
+ * @param opcoes { metricas: true } acrescenta `metricas` (tools/metricas.mjs) ao resumo; sem ela o resumo não muda
  */
-export async function resumoPartida(carregar, dificuldade, seed, opcoesDt) {
+export async function resumoPartida(carregar, dificuldade, seed, opcoesDt, { metricas = false } = {}) {
   const { criarMundo, posicionarParaRound, passo, vivosPorTime } = await carregar('mundo');
   const { criarBomba } = await carregar('bomba');
   const { pensar, criarCerebro } = await carregar('bots');
@@ -91,6 +93,7 @@ export async function resumoPartida(carregar, dificuldade, seed, opcoesDt) {
   }
   novoRound();
 
+  const coletor = metricas ? criarColetor() : null;
   const log = [];
   const sequencia = [];
   let mortes = 0;
@@ -119,6 +122,7 @@ export async function resumoPartida(carregar, dificuldade, seed, opcoesDt) {
         log.push({ n, round: p.round, dt, id: e.id, estado: c.estado, queriaAndar: c.queriaAndar, velHoriz: e.velHoriz });
       }
     }
+    if (coletor && jogando) coletor.passo({ n, t: mundo.tempo, round: p.round, entidades: mundo.entidades, eventos: ev });
     const eventos = tickPartida(p, dt, vivosPorTime(mundo), mundo.bomba);
     if (eventos.includes('troca-lados')) E.resetarEconomia(mundo, p);
     for (const x of eventos) {
@@ -130,7 +134,10 @@ export async function resumoPartida(carregar, dificuldade, seed, opcoesDt) {
         }
         E.premiarRound(mundo, p, p.vencedorRound ?? null);
       }
-      if (x === 'novo-round') novoRound();
+      if (x === 'novo-round') {
+        coletor?.fimRound(mundo.entidades); // antes de recriar os cérebros
+        novoRound();
+      }
     }
     n++;
   }
@@ -145,7 +152,8 @@ export async function resumoPartida(carregar, dificuldade, seed, opcoesDt) {
     for (let i = 0; i < passos && p.fase !== 'fim-partida'; i++) umPasso(DT_SIM);
   }
 
-  return {
+  coletor?.fimRound(mundo.entidades);
+  const resumo = {
     rounds: p.round,
     placar: { azul: p.placar.azul, laranja: p.placar.laranja },
     vitoriasT,
@@ -156,10 +164,11 @@ export async function resumoPartida(carregar, dificuldade, seed, opcoesDt) {
     dinheiroFinal: mundo.entidades.map((e) => e.dinheiro),
     hash: fnv1a(sequencia.join(';')),
   };
+  return coletor ? { ...resumo, metricas: coletor.resultado() } : resumo;
 }
 
 // "1..5" ou "1,3,5" -> [numeros]
-function lerSeeds(texto) {
+export function lerSeeds(texto) {
   const faixa = /^(\d+)\.\.(\d+)$/.exec(texto);
   if (faixa) {
     const [a, b] = [Number(faixa[1]), Number(faixa[2])];

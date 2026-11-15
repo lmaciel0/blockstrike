@@ -19,6 +19,10 @@ const PUBLICO = [
   'criarArma', 'calcularSpread', 'velocidadeDe', 'SAQUE',
   // navegacao, bots
   'criarGrafo', 'criarCerebro', 'pensar',
+  // percepcao
+  'JANELA_PERCEPCAO', 'percebido', 'registrarVistos', 'velocidadePercebida',
+  // mao
+  'criarMao', 'moverMao',
   // rounds
   'criarPartida', 'ladoAzul', 'terroristasDe', 'tickPartida',
   // bomba

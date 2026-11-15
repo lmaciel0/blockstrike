@@ -66,14 +66,16 @@ export const ECONOMIA: {
   recompensaKill: Partial<Record<TipoArma, number>>; freezeCompra: number;
 } = {
   inicial: 800, maximo: 16000, vitoria: 3250,
-  derrota: [1400, 1900, 2400, 2900, 3400], // bônus de quem perde: sobe a cada derrota seguida
+  // Bônus de quem perde: sobe a cada derrota seguida. +$500 por degrau no balanceamento (era 1400..3400):
+  // segura a bola de neve do lado que perde.
+  derrota: [1900, 2400, 2900, 3400],
   recompensaKill: { rifle: 300, pistola: 300, sniper: 100, escopeta: 900, faca: 900, smg: 600 },
   freezeCompra: 12, // s de freeze com o menu de compra
 };
 
 // id → { nome, preco, grupo }. `kit` só vale para CT; as granadas têm limite por tipo.
 export const ITENS: Record<IdItem, ItemLoja> = {
-  rifle: { nome: 'Rifle', preco: 2700, grupo: 'arma' },
+  rifle: { nome: 'Rifle', preco: 3100, grupo: 'arma' }, // era 2700: ver docs/balanceamento.md
   fuzil: { nome: 'Fuzil', preco: 3100, grupo: 'arma' },
   rifleS: { nome: 'Rifle-S', preco: 2900, grupo: 'arma' },
   smg: { nome: 'SMG', preco: 1250, grupo: 'arma' },
@@ -168,11 +170,21 @@ export const ARMAS: Record<TipoArma, DefArma> = {
 // Tipo base da arma (a própria, se não for variante).
 export const familia = (tipo: TipoArma): TipoArma => ARMAS[tipo]?.familia ?? tipo;
 
-// reacao em segundos; erroMira em radianos; chanceCabeca em [0,1]; alturaTronco em m (ponto de mira no corpo).
+// reacao em segundos (>= mao.atraso); chanceCabeca em [0,1]; alturaTronco em m (ponto de mira no corpo);
+// toleranciaTiro em rad; mao = perfil da mão virtual (atraso para começar a mirar, mola, aceleração, tremor e previsão).
 export const DIFICULDADE: Record<NomeDificuldade, Dificuldade> = {
-  facil: { reacao: 0.6, erroMira: 0.07, chanceCabeca: 0.03, alturaTronco: 0.95 },
-  medio: { reacao: 0.38, erroMira: 0.04, chanceCabeca: 0.3 },
-  dificil: { reacao: 0.2, erroMira: 0.02, chanceCabeca: 0.45 },
+  facil: {
+    reacao: 0.75, chanceCabeca: 0.02, alturaTronco: 0.95, toleranciaTiro: 0.05,
+    mao: { atraso: 0.5, firmeza: 9, amortecimento: 0.55, acelMax: 60, tremor: 0.012, previsao: 0.8 },
+  },
+  medio: {
+    reacao: 0.5, chanceCabeca: 0.2, alturaTronco: 0.95, toleranciaTiro: 0.035,
+    mao: { atraso: 0.35, firmeza: 12, amortecimento: 0.6, acelMax: 90, tremor: 0.008, previsao: 0.85 },
+  },
+  dificil: {
+    reacao: 0.3, chanceCabeca: 0.35, alturaTronco: 1.0, toleranciaTiro: 0.025,
+    mao: { atraso: 0.22, firmeza: 16, amortecimento: 0.7, acelMax: 140, tremor: 0.005, previsao: 0.85 },
+  },
 };
 
 // Exibidos como `Bot <nome>`.

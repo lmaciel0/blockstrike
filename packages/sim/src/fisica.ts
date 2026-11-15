@@ -8,6 +8,12 @@ import type {
   AcertoEntidade, AlvoFisico, Caixa, HitboxParte, ImpactoCaixa, ResultadoMovimento, Vec3,
 } from './tipos.js';
 
+/** Ângulo equivalente em (-π, π]: `angulo(b - a)` é o giro pelo menor caminho de `a` até `b`. */
+export const angulo = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a));
+
+/** Limite (rad) do pitch de qualquer entidade: o `passo` corta o comando aqui e a mão dos bots também. */
+export const PITCH_MAX = 1.5;
+
 const PASSO_MAX = 0.1;
 const EPS = 1e-9;
 const EIXOS = ['x', 'y', 'z'] as const;

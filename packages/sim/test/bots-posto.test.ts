@@ -114,7 +114,8 @@ test('tiro de quem não vê manda para a cobertura e depois de volta ao posto', 
   const c = noPosto(3);
   const t = reviverT(c.mundo, { x: 0, z: -26 }); // na base T, atrás da barreira
   const ct = cts(c.mundo).find((e) => siteDe(e) === 'B')!;
-  cerebroDe(ct).ultimoDanoDe = t.id;
+  // Plano 2: o CT só recebe a direção do tiro (yaw da vítima para o atirador), não o id nem a posição do T.
+  cerebroDe(ct).ultimoDano = { angulo: yawPara(ct.pos, t.pos), em: c.mundo.tempo };
   pensar(ct, c.mundo, c.grafo, 'medio', 0.05, c.rng);
   expect(cerebroDe(ct).estado).toBe('cobertura');
   rodar(c, 15, { fora: [t.id] });
@@ -139,4 +140,52 @@ test('cérebro novo usa a metade de onde o bot nasceu, não a do round anterior'
       expect(dist(e.pos, esperaDe(e)) < 1.5, `${tag}: a ${dist(e.pos, esperaDe(e)).toFixed(2)} m do posto`).toBeTruthy();
     }
   }
+});
+
+// Plano 2 (mira humana): o CT no posto não gira mais no primeiro quadro em que vê alguém (a mão espera `mao.atraso`).
+// Inimigo que aparece um instante na borda do cone e some: a mão vai para onde ele foi percebido, em vez de voltar
+// para a entrada (antes, com o T oscilando na borda do cone, o CT nunca chegava a mirar nem atirar).
+test('CT no posto vira para onde percebeu o inimigo que sumiu', () => {
+  const c = noPosto(3);
+  const e = cts(c.mundo)[0];
+  const olhoE = { x: e.pos.x, y: e.pos.y + 1.6, z: e.pos.z };
+  const yawVisto = e.yaw + (50 * Math.PI) / 180;
+  let ponto: PontoXZ | null = null;
+  for (let d = 12; d >= 4 && !ponto; d -= 0.5) {
+    const p = { x: e.pos.x - Math.sin(yawVisto) * d, z: e.pos.z - Math.cos(yawVisto) * d };
+    if (temVisada(olhoE, { x: p.x, y: 1.6, z: p.z }, MAPA.caixas)) ponto = p;
+  }
+  expect(ponto, 'sem ponto com visada a 50° do posto').not.toBe(null);
+  const t = reviverT(c.mundo, ponto!);
+  const umPasso = (): void => {
+    const cmd = pensar(e, c.mundo, c.grafo, 'medio', 1 / 60, c.rng);
+    passo(c.mundo, 1 / 60, new Map([[e.id, cmd]]));
+  };
+  umPasso(); // vê o T por um quadro
+  expect(cerebroDe(e).alvoId).toBe(t.id);
+  t.pos = { x: e.pos.x + Math.sin(e.yaw) * 10, y: 0, z: e.pos.z + Math.cos(e.yaw) * 10 }; // some: 10 m às costas
+  const alvoYaw = yawPara(e.pos, ponto!);
+  for (let i = 0; i < 48; i++) umPasso(); // 0,8 s: passa o atraso (0,4 s) e a mão gira
+  const erro = Math.abs(angulo(e.yaw - alvoYaw));
+  expect(erro < 0.25, `mira a ${erro.toFixed(2)} rad do ponto percebido`).toBeTruthy();
+});
+
+// Task 10 (balanceamento): no fácil o CT segura o ângulo mal, a mira parada do posto fica até 0,6 rad (~34°)
+// fora da entrada; no médio e no difícil continua até 0,15 rad. Com 0,15 no fácil o CT de mira pronta ganhava
+// quase todo duelo de quem entrava (vitória T 40%).
+test('a mira parada do posto varia mais no fácil que no médio e no difícil', () => {
+  const grafo = criarGrafo(MAPA.waypoints, MAPA.arestas);
+  const maior = (dificuldade: 'facil' | 'medio' | 'dificil'): number => {
+    const mundo = criarMundo({ mapa: MAPA, primariaJogador: 'rifle', dificuldade, rng: criarRng(7) });
+    const rng = criarRng(11);
+    let m = 0;
+    for (let i = 0; i < 40; i++) {
+      for (const e of mundo.entidades) m = Math.max(m, Math.abs(criarCerebro(e, grafo, rng, MAPA.caixas, mundo).desvioMira));
+    }
+    return m;
+  };
+  const facil = maior('facil');
+  expect(facil > 0.45 && facil <= 0.6, `fácil: desvio máximo ${facil.toFixed(3)}`).toBeTruthy();
+  expect(maior('medio')).toBeLessThanOrEqual(0.15);
+  expect(maior('dificil')).toBeLessThanOrEqual(0.15);
 });

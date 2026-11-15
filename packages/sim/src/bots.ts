@@ -5,13 +5,15 @@
  */
 
 import { ARMAS, BOMBA, DIFICULDADE, RECUO_MAX, familia } from './config.js';
-import { olho, direcao, temVisada } from './fisica.js';
+import { PITCH_MAX, angulo, olho, direcao, temVisada } from './fisica.js';
+import { criarMao, moverMao } from './mao.js';
+import { JANELA_PERCEPCAO, percebido, registrarVistos, velocidadePercebida } from './percepcao.js';
 import { caminho, maisProximo, coberturaPerto } from './navegacao.js';
 import { siteEm } from './bomba.js';
 import { noFogo, visadaLivre } from './granadas.js';
 import type {
-  Arma, Bombsite, Caixa, Cerebro, ChaveBomba, Comandos, Dificuldade, Entidade, EstadoCerebro, Fogo, Grafo, Mapa, Mundo,
-  NomeDificuldade, PontoXZ, Rng, Ruido, Site, TipoArma, TipoGranada, TipoPrimaria, Vec3, Waypoint,
+  Amostra, Arma, Bombsite, Caixa, Cerebro, ChaveBomba, Comandos, Dificuldade, Entidade, EstadoCerebro, Fogo, Grafo, Mapa, Mundo,
+  NomeDificuldade, PerfilMao, PontoXZ, Rng, Ruido, Site, TipoArma, TipoGranada, TipoPrimaria, Vec3, Waypoint,
 } from './tipos.js';
 
 const ALCANCE_VISAO = 60;
@@ -20,11 +22,8 @@ const VISAO_360 = 3;
 const GIRO_MAX = 8; // rad/s
 const PERDER_ALVO = 1; // s sem visada até voltar para a rota
 const CHEGOU = 0.8; // m até o waypoint contar como alcançado
-const MIRA_OK = 0.12; // rad: só atira com a mira perto do ponto desejado
 const STRAFE_TROCA = 0.6;
 const HP_RECUO = 30;
-const TROCA_ERRO = 0.15; // s entre sorteios do erro de mira
-const ERRO_PITCH = 0.2; // erro vertical = esta fração do horizontal (senão a mira no tronco vira cabeçada)
 const PRESO_TEMPO = 1;
 const ESPERA_COBERTURA: [number, number] = [1.5, 3];
 // Onde cada T fica no bombsite (m em volta do centro, pelo índice no time): espalhados, não empilhados.
@@ -39,6 +38,10 @@ const ALCANCE_IDEAL: Partial<Record<TipoArma, number>> = { sniper: 60, rifle: 20
 
 const ALCANCE_OUVIDO = 15; // m: passo de inimigo até aqui chama a atenção do bot
 const OLHAR_RUIDO = 1; // s olhando para onde veio o barulho
+const ERRO_DIRECAO_DANO = 15 * Math.PI / 180; // rad: erro (uniforme, ±) da direção de quem atirou sem ser visto
+const ERRO_DIRECAO_RUIDO = ERRO_DIRECAO_DANO; // rad: mesmo erro (±15°) na direção de um ruído ouvido
+const ERRO_DIST_RUIDO = 0.3; // fração: distância percebida do ruído = real × uniforme [1-0,3; 1+0,3]
+const DIST_AMEACA_DANO = 15; // m: o ponto da ameaça fica sempre a esta distância, qualquer que seja a do atirador
 const GRANADA_INTERVALO: [number, number] = [6, 12]; // s entre arremessos do mesmo bot
 const ALCANCE_HE = [9, 28];
 const ALCANCE_FLASH = [6, 25];
@@ -46,8 +49,13 @@ const ALCANCE_MOLOTOV = [6, 22];
 const FOGO_OLHAR = 1.2; // m à frente: fogo aqui no caminho → espera em vez de atravessar
 const FOGO_SAIDA = 1.5; // m além da borda do fogo para onde foge quem está queimando
 const SAIDA_FIXA = 0.6; // s mantendo a mesma saída do fogo
+// s: amostra percebida até esta idade além do `atraso` ainda conta como "o ponto anda" (base + folga da velocidade).
+const AMOSTRA_RECENTE = 0.15;
 const FUMACA_RECUO = 6; // m à frente para a smoke que cobre a fuga
-const DESVIO_MIRA = 0.15; // rad: variação da mira parada no posto entre os CTs
+// rad: variação da mira parada no posto entre os CTs. No fácil o CT segura o ângulo mal (até ~34° fora da
+// entrada); era 0,15 em todas. Balanceamento (Task 10): com a mira pronta, o CT do fácil ganhava quase todo
+// duelo de quem entrava. Não muda a mira com alvo (mão virtual), só para onde ele olha esperando.
+const DESVIO_MIRA: Record<NomeDificuldade, number> = { facil: 0.6, medio: 0.15, dificil: 0.15 };
 
 const PESOS: [TipoPrimaria, number][] = [
   ['rifle', 0.35], ['fuzil', 0.1], ['rifleS', 0.1], ['smg', 0.13], ['miniSmg', 0.06], ['smgS', 0.06], ['escopeta', 0.2],
@@ -79,16 +87,25 @@ export function escolherPrimaria(indiceNoTime: number, rng: Rng): TipoPrimaria {
 }
 
 const sortear = (rng: Rng, [a, b]: readonly [number, number]): number => a + rng() * (b - a);
-const angulo = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a));
 const distXZ = (a: PontoXZ, b: PontoXZ): number => Math.hypot(a.x - b.x, a.z - b.z);
-
-function gauss(rng: Rng): number {
-  const u = Math.max(rng(), 1e-12);
-  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rng());
-}
 
 // Yaw que olha de `de` para `para` (yaw 0 olha para -z).
 const yawPara = (de: PontoXZ, para: PontoXZ): number => Math.atan2(-(para.x - de.x), -(para.z - de.z));
+
+// Ponto da ameaça por direção: o ângulo (yaw da vítima para o atirador) com erro uniforme de ±ERRO_DIRECAO_DANO,
+// a DIST_AMEACA_DANO metros. Não depende de onde o atirador está, só de para que lado ele está.
+export function ameacaPorDirecao(ent: Entidade, anguloReal: number, rng: Rng): PontoXZ {
+  const a = anguloReal + (rng() * 2 - 1) * ERRO_DIRECAO_DANO;
+  return { x: ent.pos.x - Math.sin(a) * DIST_AMEACA_DANO, z: ent.pos.z - Math.cos(a) * DIST_AMEACA_DANO };
+}
+
+// Ponto onde o bot acha que o ruído veio: ângulo real de `de` até o ruído com erro uniforme de ±ERRO_DIRECAO_RUIDO
+// e distância real × uniforme [1-ERRO_DIST_RUIDO, 1+ERRO_DIST_RUIDO]. Nunca a posição exata do ruído.
+export function perceberRuido(de: PontoXZ, r: Ruido, rng: Rng): PontoXZ {
+  const a = yawPara(de, r) + (rng() * 2 - 1) * ERRO_DIRECAO_RUIDO;
+  const d = Math.hypot(r.x - de.x, r.z - de.z) * (1 + (rng() * 2 - 1) * ERRO_DIST_RUIDO);
+  return { x: de.x - Math.sin(a) * d, z: de.z - Math.cos(a) * d };
+}
 
 function waypointPerto(grafo: Grafo, pos: Vec3, caixas: Caixa[]): number | null {
   return maisProximo(grafo, pos, caixas) ?? maisProximo(grafo, pos, caixas, { exigirVisada: false });
@@ -141,15 +158,18 @@ export function criarCerebro(
   // `ent.cerebro` ainda é o do round anterior (outra metade depois da troca de lados): passa a casa nova.
   const bomba = mundo ? destinoBomba(ent, mundo, casaZ) : null;
   const destino = bomba ? bomba.waypoint! : objetivo(ent, grafo, rng, ordem[indice % 3]);
+  // Dificuldade por nome (perfil avulso, sem nome, usa o do médio).
+  const desvio = DESVIO_MIRA[typeof mundo?.dificuldade === 'string' ? mundo.dificuldade : 'medio'];
   return {
     estado: 'rota', rota: rotaDoRound(ent, grafo, caixas, destino, bomba, mundo, indice), alvoId: null, vistoHa: 0,
-    rajada: 0, pausaAte: 0, ultimoDanoDe: null,
+    rajada: 0, pausaAte: 0, ultimoDano: null,
     passoRota: 0, ultimaPos: null, perdidoHa: 0, esperaAte: 0, chegou: false,
-    erro: { yaw: 0, pitch: 0 }, erroAte: 0, cabeca: false, municaoVista: null,
+    cabeca: false, municaoVista: null,
     gatilho: false, emRajada: false, preso: 0, queriaAndar: false, recuou: false,
     ouvidoEm: -Infinity, ouvidoAte: 0, ouvidoPos: null, chaveBomba: bomba ? bomba.chave : null,
     proxGranada: 0, cegoVisto: 0, casaZ,
-    desvioMira: sortear(rng, [-DESVIO_MIRA, DESVIO_MIRA]),
+    desvioMira: sortear(rng, [-desvio, desvio]), desencalhes: 0,
+    percepcao: [], mao: criarMao(),
   };
 }
 
@@ -161,6 +181,13 @@ function pontosDoCorpo(
   const k = alvo.agachado ? 1.2 / 1.8 : 1;
   const { x, y, z } = alvo.pos;
   return { cabeca: { x, y: y + 1.6 * k, z }, tronco: { x, y: y + alturaTronco * k, z } };
+}
+
+// Instante da amostra mais antiga do inimigo `id` ainda guardada (`agora` se não houver nenhuma).
+function vistoDesde(amostras: readonly Amostra[], id: number, agora: number): number {
+  let t = agora;
+  for (const a of amostras) if (a.id === id && a.t < t) t = a.t;
+  return t;
 }
 
 // Inimigos visíveis do olho do bot, do mais perto ao mais longe.
@@ -358,7 +385,81 @@ const comandoBase = (ent: Entidade): Comandos => ({
   zoom: false, recarregar: false, usar: false, granada: null, slot: null, yaw: ent.yaw, pitch: ent.pitch,
 });
 
-// Mira (com erro humano e giro limitado) e decide o gatilho. Mexe só em yaw/pitch/atirar/zoom/lado.
+interface Angulos { yaw: number; pitch: number }
+/** Amostra percebida já adiantada pela previsão, com a velocidade (m/s, XZ) com que o ponto anda agora. */
+type Previsto = Amostra & { vel: { x: number; z: number } };
+/** Ângulos de mira e, se o ponto anda, a velocidade angular dele (rad/s) para o feedforward da mão. */
+type Mira = Angulos & { vel?: Angulos };
+
+// Leva a mira pela mão virtual (mao.ts) até `alvo`; o pitch fica dentro do mesmo limite do `passo`.
+function mirarComMao(
+  ent: Entidade, c: Cerebro, alvo: Mira, perfil: PerfilMao, agora: number, dt: number, rng: Rng, cmd: Comandos,
+): void {
+  const r = moverMao({ yaw: ent.yaw, pitch: ent.pitch }, alvo, c.mao, perfil, agora, dt, rng, alvo.vel);
+  cmd.yaw = r.yaw;
+  cmd.pitch = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, r.pitch));
+  // Limite mordeu: a velocidade que empurra para fora dele não pode acumular na mão.
+  if (r.pitch > PITCH_MAX && c.mao.vPitch > 0) c.mao.vPitch = 0;
+  else if (r.pitch < -PITCH_MAX && c.mao.vPitch < 0) c.mao.vPitch = 0;
+}
+
+// Mão parada no lugar: sem ponto percebido ainda, segura a mira atual (a velocidade que sobrou freia, sem tremor).
+function segurarMira(ent: Entidade, c: Cerebro, dif: Dificuldade, agora: number, dt: number, rng: Rng, cmd: Comandos): void {
+  mirarComMao(ent, c, { yaw: ent.yaw, pitch: ent.pitch }, { ...dif.mao, tremor: 0 }, agora, dt, rng, cmd);
+}
+
+// Onde a mão deve mirar o alvo `id`: a amostra percebida (`mao.atraso` s atrás) adiantada, só no plano XZ, pela
+// velocidade percebida × atraso × `mao.previsao` (o humano rastreia com previsão e só erra quando o alvo muda de
+// direção). Só usa amostras da percepção; escondido, p e a velocidade não mudam → o ponto fica parado.
+// `vel`: com que velocidade o ponto anda agora — a percebida enquanto p ainda avança (amostra recente), zero
+// quando p parou de mudar (alvo sumiu há mais de `atraso` s), para o feedforward não empurrar a mão.
+function pontoPrevisto(c: Cerebro, id: number, agora: number, dif: Dificuldade): Previsto | null {
+  const p = percebido(c.percepcao, id, agora, dif.mao.atraso);
+  if (!p) return null;
+  const v = velocidadePercebida(c.percepcao, id, agora, dif.mao.atraso);
+  const k = dif.mao.atraso * dif.mao.previsao;
+  const vivo = agora - dif.mao.atraso - p.t <= AMOSTRA_RECENTE;
+  return { ...p, pos: { x: p.pos.x + v.x * k, y: p.pos.y, z: p.pos.z + v.z * k }, vel: vivo ? v : { x: 0, z: 0 } };
+}
+
+// Velocidade angular (rad/s) de `ponto` visto de `o` quando ele anda a `v` (m/s, XZ): derivada de `yawPara`
+// (yaw = atan2(−dx, −dz)) e do pitch (atan2(dy, distância XZ)). Alimenta o feedforward da mão.
+function velocidadeAngular(o: Vec3, ponto: Vec3, v: { x: number; z: number }): Angulos {
+  const dx = ponto.x - o.x;
+  const dz = ponto.z - o.z;
+  const dy = ponto.y - o.y;
+  const h2 = dx * dx + dz * dz;
+  if (h2 < 1e-6) return { yaw: 0, pitch: 0 };
+  const h = Math.sqrt(h2);
+  const dh = (dx * v.x + dz * v.z) / h;
+  return { yaw: (dz * v.x - dx * v.z) / h2, pitch: (-dy * dh) / (h2 + dy * dy) };
+}
+
+// Yaw/pitch do ponto (cabeça ou tronco, `c.cabeca`) de onde o alvo foi percebido; parte escondida (atrás de
+// caixa baixa, por exemplo) → mira na outra.
+function miraNoPercebido(ent: Entidade, c: Cerebro, p: Previsto, dif: Dificuldade, mundo: Mundo): Mira {
+  const o = olho(ent);
+  const corpo = pontosDoCorpo(p, dif.alturaTronco);
+  let ponto = c.cabeca ? corpo.cabeca : corpo.tronco;
+  if (!temVisada(o, ponto, mundo.mapa.caixas)) ponto = c.cabeca ? corpo.tronco : corpo.cabeca;
+  return {
+    yaw: yawPara(o, ponto), pitch: Math.atan2(ponto.y - o.y, distXZ(o, ponto)), vel: velocidadeAngular(o, ponto, p.vel),
+  };
+}
+
+// Alvo guardado (`alvoId`) fora da visada: a mão continua indo para o último ponto previsto dele (`pontoPrevisto`,
+// não ganha posição nova). Devolve false se não há o que olhar (sem alvo ou ainda sem amostra de `mao.atraso` s atrás).
+function olharPercebido(
+  ent: Entidade, c: Cerebro, mundo: Mundo, dif: Dificuldade, dt: number, rng: Rng, cmd: Comandos,
+): boolean {
+  const p = c.alvoId === null ? null : pontoPrevisto(c, c.alvoId, mundo.tempo, dif);
+  if (!p) return false;
+  mirarComMao(ent, c, miraNoPercebido(ent, c, p, dif, mundo), dif.mao, mundo.tempo, dt, rng, cmd);
+  return true;
+}
+
+// Mira onde prevê o alvo a partir do que percebeu `mao.atraso` s atrás (pela mão virtual) e decide o gatilho.
+// Mexe só em yaw/pitch/atirar/zoom/lado.
 function atacar(
   ent: Entidade, c: Cerebro, alvo: Entidade, mundo: Mundo, dif: Dificuldade, dt: number, rng: Rng, cmd: Comandos,
   { strafe }: { strafe: boolean },
@@ -366,21 +467,16 @@ function atacar(
   const agora = mundo.tempo;
   const arma = armaEmMao(ent);
   const def = ARMAS[arma.tipo];
-  if (agora >= c.erroAte) {
-    c.erro = { yaw: gauss(rng) * dif.erroMira, pitch: gauss(rng) * dif.erroMira * ERRO_PITCH };
-    c.erroAte = agora + TROCA_ERRO;
+  const p = pontoPrevisto(c, alvo.id, agora, dif);
+  let mira: Mira | null = null;
+  if (p) {
+    mira = miraNoPercebido(ent, c, p, dif, mundo);
+    // `disparar` soma o recuo antes de aplicar: a mão tenta compensar o valor que o próximo tiro vai usar.
+    mira.pitch -= Math.min(arma.recuoAcum + def.recuo, RECUO_MAX);
+    mirarComMao(ent, c, mira, dif.mao, agora, dt, rng, cmd);
+  } else {
+    segurarMira(ent, c, dif, agora, dt, rng, cmd);
   }
-  const o = olho(ent);
-  const p = pontosDoCorpo(alvo, dif.alturaTronco);
-  // Parte escolhida escondida (atrás de caixa baixa, por exemplo) → mira na outra.
-  let ponto = c.cabeca ? p.cabeca : p.tronco;
-  if (!temVisada(o, ponto, mundo.mapa.caixas)) ponto = c.cabeca ? p.tronco : p.cabeca;
-  const yawAlvo = yawPara(o, ponto) + c.erro.yaw;
-  // `disparar` soma o recuo antes de aplicar: compensa o valor que o próximo tiro vai usar.
-  const compensa = Math.min(arma.recuoAcum + def.recuo, RECUO_MAX);
-  const pitchAlvo = Math.atan2(ponto.y - o.y, distXZ(o, ponto)) + c.erro.pitch - compensa;
-  cmd.yaw = girar(ent.yaw, yawAlvo, dt);
-  cmd.pitch = ent.pitch + Math.max(-GIRO_MAX * dt, Math.min(GIRO_MAX * dt, pitchAlvo - ent.pitch));
   cmd.zoom = arma.tipo === 'sniper';
 
   // Tiros que saíram desde o último pensar (a munição caiu) contam na rajada.
@@ -390,7 +486,9 @@ function atacar(
   }
   c.municaoVista = { slot: ent.slot, n: arma.municao };
 
-  const mirando = Math.abs(angulo(yawAlvo - cmd.yaw)) < MIRA_OK;
+  // Gatilho: a mira real (depois da mão) perto do ponto percebido, nos dois eixos.
+  const mirando = mira !== null && Math.abs(angulo(mira.yaw - cmd.yaw)) < dif.toleranciaTiro
+    && Math.abs(mira.pitch - cmd.pitch) < dif.toleranciaTiro;
   const pronto = c.vistoHa >= dif.reacao && mirando && arma.recarregandoAte === 0 && arma.municao > 0;
   if (def.auto) {
     if (c.rajada <= 0 && c.emRajada) {
@@ -428,6 +526,7 @@ function seguirRota(ent: Entidade, c: Cerebro, grafo: Grafo, dt: number, cmd: Co
   c.preso = c.queriaAndar && ent.velHoriz < 1 ? c.preso + dt : 0;
   if (c.preso > PRESO_TEMPO) {
     c.preso = 0;
+    c.desencalhes += 1;
     cmd.pular = true;
     if (c.passoRota < c.rota.length - 1) c.passoRota += 1;
   }
@@ -480,19 +579,24 @@ function irParaCobertura(
 function voltarParaRota(ent: Entidade, c: Cerebro, grafo: Grafo, caixas: Caixa[], destinoId: number | null): void {
   Object.assign(c, {
     estado: 'rota', rota: rotaAte(ent, grafo, caixas, destinoId), passoRota: 0,
-    alvoId: null, vistoHa: 0, chegou: false, preso: 0, emRajada: false,
+    alvoId: null, vistoHa: 0, chegou: false, preso: 0, emRajada: false, semDireto: false,
   });
 }
 
-// Passos de inimigo ouvidos há pouco viram a mira para o barulho (ganha da mira parada).
-function olharRuido(ent: Entidade, c: Cerebro, mundo: Mundo, dt: number, cmd: Comandos): void {
+// Passos de inimigo ouvidos há pouco viram a mira (pela mão virtual, na horizontal) para o barulho
+// (ganha da mira parada). Devolve true se moveu a mão: quem chama não pode mover de novo no mesmo passo.
+function olharRuido(ent: Entidade, c: Cerebro, mundo: Mundo, dif: Dificuldade, dt: number, cmd: Comandos, rng: Rng): boolean {
   const ruido = ouvir(ent, mundo, c);
   if (ruido) {
     c.ouvidoEm = ruido.em;
     c.ouvidoAte = mundo.tempo + OLHAR_RUIDO;
-    c.ouvidoPos = { x: ruido.x, z: ruido.z };
+    c.ouvidoPos = perceberRuido(ent.pos, ruido, rng);
   }
-  if (c.ouvidoPos && mundo.tempo < c.ouvidoAte) cmd.yaw = girar(ent.yaw, yawPara(ent.pos, c.ouvidoPos), dt);
+  if (c.ouvidoPos && mundo.tempo < c.ouvidoAte) {
+    mirarComMao(ent, c, { yaw: yawPara(ent.pos, c.ouvidoPos), pitch: 0 }, dif.mao, mundo.tempo, dt, rng, cmd);
+    return true;
+  }
+  return false;
 }
 
 // No posto sem alvo: mira a saída da rota inimiga (com o desvio do bot), pitch na horizontal.
@@ -529,10 +633,16 @@ export function pensar(
 
   // Visão: mantém o alvo atual enquanto visível; senão, o inimigo mais perto.
   const vistos = enxergar(ent, mundo);
+  // Percepção atrasada: guarda onde cada visto está agora; a mira usa o que foi visto `mao.atraso` s atrás.
+  registrarVistos(c.percepcao, vistos.map((v) => v.ent), agora, JANELA_PERCEPCAO);
   const alvo = (vistos.find((v) => v.ent.id === c.alvoId) ?? vistos[0])?.ent ?? null;
   if (alvo) {
     if (alvo.id !== c.alvoId) {
-      Object.assign(c, { alvoId: alvo.id, vistoHa: 0, emRajada: false, rajada: 0, refazerEm: 0 });
+      // A reação conta desde a primeira vez que este inimigo foi visto dentro da janela de percepção: quem já
+      // espiou há pouco não começa do zero (dois inimigos se revezando na mesma porta zeravam a reação a cada troca).
+      // Inimigo nunca visto começa em 0, como antes.
+      const vistoHa = agora - vistoDesde(c.percepcao, alvo.id, agora);
+      Object.assign(c, { alvoId: alvo.id, vistoHa, emRajada: false, rajada: 0, refazerEm: 0 });
       c.cabeca = rng() < dif.chanceCabeca;
     }
     c.vistoHa += dt;
@@ -540,12 +650,18 @@ export function pensar(
     c.ultimaPos = { ...alvo.pos };
   }
 
-  // Levou dano de quem não vê: procura cobertura contra o atirador.
-  if (c.ultimoDanoDe !== null) {
-    const atirador = mundo.entidades.find((e) => e.id === c.ultimoDanoDe);
-    c.ultimoDanoDe = null;
-    const visto = vistos.some((v) => v.ent.id === atirador?.id);
-    if (atirador && !visto && c.estado !== 'recuo') irParaCobertura(ent, c, grafo, caixas, atirador.pos, 'cobertura');
+  // Levou dano: só sabe a direção. Se algum inimigo visível está nessa direção (±erro), é ele e o combate segue;
+  // senão procura cobertura contra um ponto naquela direção (com erro) e vira o olhar para lá.
+  if (c.ultimoDano !== null) {
+    const { angulo: anguloDano } = c.ultimoDano;
+    c.ultimoDano = null;
+    const visto = vistos.some((v) => Math.abs(angulo(yawPara(ent.pos, v.ent.pos) - anguloDano)) <= ERRO_DIRECAO_DANO);
+    if (!visto && c.estado !== 'recuo') {
+      const ponto = ameacaPorDirecao(ent, anguloDano, rng);
+      irParaCobertura(ent, c, grafo, caixas, { x: ponto.x, y: 0, z: ponto.z }, 'cobertura');
+      c.ouvidoAte = agora + OLHAR_RUIDO;
+      c.ouvidoPos = ponto;
+    }
   }
   // Ferido e vendo o inimigo: recua uma vez só por round. Recuar de novo a cada visada virava um vaivém
   // sem fim (cobertura, espera, volta à rota, vê o inimigo, cobertura...); depois do recuo ele luta.
@@ -583,6 +699,10 @@ export function pensar(
     } else if (alvo && c.estado === 'cobertura') {
       atacar(ent, c, alvo, mundo, dif, dt, rng, cmd, { strafe: false });
     }
+    // Cobertura por causa de dano: a mira vira (pela mão virtual) para a direção do tiro, sem alvo à vista.
+    if (c.estado === 'cobertura' && !alvo && c.ouvidoPos && agora < c.ouvidoAte) {
+      mirarComMao(ent, c, { yaw: yawPara(ent.pos, c.ouvidoPos), pitch: 0 }, dif.mao, agora, dt, rng, cmd);
+    }
   } else if (c.estado === 'posto') {
     // Segurando o ângulo: atira do lugar, sem avançar e sem perseguir; sem alvo, volta a mirar a entrada.
     if (alvo) {
@@ -591,8 +711,12 @@ export function pensar(
     } else {
       c.perdidoHa += dt;
       if (c.perdidoHa > PERDER_ALVO) Object.assign(c, { alvoId: null, vistoHa: 0, emRajada: false });
-      mirarEntrada(ent, c, mundo, dt, cmd);
-      olharRuido(ent, c, mundo, dt, cmd);
+      // Inimigo visto há pouco (alvo ainda guardado): a mão vai para onde ele foi percebido, não volta para a
+      // entrada. Sem isso, quem aparecia por um quadro na borda do cone sumia antes de o bot começar a mirar.
+      // Uma só atualização da mão por passo: o ruído ganha (como antes); sem ele, o ponto percebido; sem os dois, a entrada.
+      if (!olharRuido(ent, c, mundo, dif, dt, cmd, rng) && !olharPercebido(ent, c, mundo, dif, dt, rng, cmd)) {
+        mirarEntrada(ent, c, mundo, dt, cmd);
+      }
     }
   } else if (alvo) {
     c.estado = 'combate';
@@ -601,7 +725,7 @@ export function pensar(
     destino = avancar(ent, c, alvo, grafo, caixas, agora, dt, cmd);
   } else if (c.estado === 'combate') {
     c.perdidoHa += dt;
-    cmd.yaw = girar(ent.yaw, yawPara(ent.pos, c.ultimaPos!), dt);
+    if (!olharPercebido(ent, c, mundo, dif, dt, rng, cmd)) cmd.yaw = girar(ent.yaw, yawPara(ent.pos, c.ultimaPos!), dt);
     if (c.perdidoHa > PERDER_ALVO) {
       voltarParaRota(ent, c, grafo, caixas, waypointPerto(grafo, c.ultimaPos!, caixas));
       c.estado = 'procura';
@@ -612,9 +736,14 @@ export function pensar(
     if (bomba && bomba.chave !== c.chaveBomba) {
       voltarParaRota(ent, c, grafo, caixas, proximoObjetivo(ent, c, mundo, grafo, rng));
     }
+    const desencAntes = c.desencalhes;
     destino = seguirRota(ent, c, grafo, dt, cmd);
     const tarefa = tarefaBomba(ent, mundo, cmd);
-    if (tarefa?.direto) {
+    // Preso andando reto: a visada do centro passa, mas o corpo encosta numa quina. O `direto` sobrepunha a
+    // rota e o desencalhe não o tirava dali; agora ele larga o `direto` e segue a rota até o fim.
+    if (tarefa?.direto && c.desencalhes > desencAntes) c.semDireto = true;
+    if (!destino) c.semDireto = false;
+    if (tarefa?.direto && !c.semDireto) {
       cmd.yaw = girar(ent.yaw, yawPara(ent.pos, tarefa.direto), dt);
       destino = tarefa.direto;
     } else if (tarefa?.parado) {
@@ -627,7 +756,7 @@ export function pensar(
       c.estado = 'posto';
     }
     // Ouviu passos de inimigo: segue a rota, mas com a mira virada para o barulho.
-    olharRuido(ent, c, mundo, dt, cmd);
+    olharRuido(ent, c, mundo, dif, dt, cmd, rng);
   }
   if (mundo.fogos?.length) destino = evitarFogo(ent, mundo, destino, cmd);
   if (destino) {

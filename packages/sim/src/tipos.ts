@@ -144,6 +144,31 @@ export interface ItemCompra extends ItemLoja { id: IdItem; motivo: MotivoCompra 
 // ---------- Entidade, comandos e cérebro ----------
 
 /**
+ * Como a mão virtual (`moverMao`, mao.ts) leva a mira até o alvo: mola de segunda ordem com aceleração limitada
+ * e tremor. `atraso` (s) é quanto o bot demora para começar a mirar depois de ver; `firmeza` é ω (rad/s),
+ * `amortecimento` é ζ (< 1 passa do ponto e corrige), `acelMax` em rad/s² e `tremor` é o desvio (rad) do yaw.
+ * `previsao` em [0, 1]: fração do movimento percebido que a mão adianta (ponto = percebido + v × atraso × previsao).
+ */
+export interface PerfilMao {
+  atraso: number; firmeza: number; amortecimento: number; acelMax: number; tremor: number; previsao: number;
+}
+
+/**
+ * Estado da mão virtual (`criarMao`, mao.ts): velocidade angular (rad/s), desvio de tremor em vigor até
+ * `tremorAte` e o `tempo` da última chamada (`usadaEm`; parada há mais de 0,1 s volta com velocidade 0).
+ */
+export interface EstadoMao {
+  vYaw: number;
+  vPitch: number;
+  tremor: { yaw: number; pitch: number };
+  tremorAte: number;
+  usadaEm: number;
+}
+
+/** Onde um inimigo visto estava num instante (`registrarVistos`, percepcao.ts); a mira usa a amostra atrasada. */
+export interface Amostra { id: number; t: number; pos: Vec3; agachado: boolean }
+
+/**
  * `criarEntidade` (mundo.ts): jogador ou bot. `id` é também o índice em `mundo.entidades`.
  * Os opcionais nascem depois: `slotAnterior`/`cegoAte`/`cegoDur` em `posicionarParaRound`, `dinheiro`/`equip`
  * em `iniciarEconomia`, `kit` só com economia, `proxGranada` no primeiro arremesso e `cerebro` em quem pensa.
@@ -219,14 +244,13 @@ export interface Cerebro {
   vistoHa: number;
   rajada: number;
   pausaAte: number;
-  ultimoDanoDe: number | null;
+  /** Última direção de onde veio dano (tiro, HE): `angulo` é o yaw da vítima para o atirador; nunca a posição dele. */
+  ultimoDano: { angulo: number; em: number } | null;
   passoRota: number;
   ultimaPos: Vec3 | null;
   perdidoHa: number;
   esperaAte: number;
   chegou: boolean;
-  erro: { yaw: number; pitch: number };
-  erroAte: number;
   cabeca: boolean;
   municaoVista: { slot: Slot; n: number } | null;
   gatilho: boolean;
@@ -242,17 +266,28 @@ export interface Cerebro {
   cegoVisto: number;
   casaZ: 0 | 1; // metade do mapa onde nasceu no round: 0 = z >= 0
   desvioMira: number;
+  desencalhes: number; // quantas vezes `PRESO_TEMPO` disparou em `seguirRota` (só para métricas)
+  /** Desencalhou andando no `direto` da C4: segue a rota até o fim antes de andar reto de novo. */
+  semDireto?: boolean;
+  /** Onde cada inimigo visto estava (`registrarVistos`); a mira usa a amostra de `mao.atraso` s atrás. */
+  percepcao: Amostra[];
+  /** Mão virtual do bot: mira, olhar para o ruído e olhar para o dano dividem a mesma (a velocidade continua). */
+  mao: EstadoMao;
   saidaFogo?: { alvo: Vec3; ate: number } | null;
   disparando?: boolean;
   refazerEm?: number;
 }
 
-/** Entrada de `DIFICULDADE` (config.ts). Só a fácil tem `alturaTronco`. */
+/**
+ * Entrada de `DIFICULDADE` (config.ts). Só a fácil tem `alturaTronco`. `reacao` (s, sempre >= `mao.atraso`) segura
+ * o gatilho desde que viu; `toleranciaTiro` (rad) é o quanto a mira real pode estar longe do ponto percebido no tiro.
+ */
 export interface Dificuldade {
   reacao: number;
-  erroMira: number;
   chanceCabeca: number;
   alturaTronco?: number;
+  toleranciaTiro: number;
+  mao: PerfilMao;
 }
 export type NomeDificuldade = 'facil' | 'medio' | 'dificil';
 

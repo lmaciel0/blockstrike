@@ -150,3 +150,36 @@ test('só um T vai buscar a C4 solta, sem trocar a vez', () => {
   expect(trocas[a.id] <= 1 && trocas[b.id] <= 1, `trocas de objetivo: ${JSON.stringify(trocas)}`).toBeTruthy();
   expect([a, b].filter((e) => cerebroDe(e).chaveBomba === 'solta').length).toBe(1);
 });
+
+// Bot com a rota atrás de uma caixa larga e alta: anda contra ela sem sair do lugar. Cada vez que o tempo
+// preso passa de PRESO_TEMPO (1 s), `seguirRota` desencalha (pula e avança um waypoint) e soma em `desencalhes`.
+test('desencalhe conta em cerebro.desencalhes', () => {
+  const chao = { min: { x: -50, y: -1, z: -50 }, max: { x: 50, y: 0, z: 50 }, cor: 0x888888 };
+  const mundo = criarMundo({ mapa: { ...MAPA, caixas: [chao] }, primariaJogador: 'rifle', dificuldade: 'medio', rng: criarRng(1) });
+  posicionarParaRound(mundo, 'A');
+  for (const e of mundo.entidades) e.vivo = false;
+  const b = mundo.entidades[1];
+  b.vivo = true;
+  b.pos = { x: 0, y: 0, z: 0 };
+  const rng = criarRng(8);
+  const c = criarCerebro(b, grafo, rng, [chao]);
+  b.cerebro = c;
+  // Rota de um só waypoint, 10 m a frente do bot; a caixa (de 2 m de espessura, muito larga) fica no meio.
+  const wp = grafo.nos.reduce((m, n) => (Math.hypot(n.x - 0, n.z - 10) < Math.hypot(m.x, m.z - 10) ? n : m));
+  c.rota = [grafo.nos.indexOf(wp)];
+  c.passoRota = 0;
+  const dx = wp.x - b.pos.x;
+  const dz = wp.z - b.pos.z;
+  const d = Math.hypot(dx, dz);
+  const meio = { x: b.pos.x + (dx / d) * 2, z: b.pos.z + (dz / d) * 2 };
+  mundo.mapa.caixas.push({
+    min: { x: meio.x - 40, y: 0, z: meio.z - 1 }, max: { x: meio.x + 40, y: 4, z: meio.z + 1 }, cor: 1,
+  });
+  expect(c.desencalhes).toBe(0);
+  const cmds = new Map<number, Comandos>();
+  for (let i = 0; i < 1.5 / DT; i++) {
+    cmds.set(b.id, pensar(b, mundo, grafo, 'medio', DT, rng));
+    passo(mundo, DT, cmds);
+  }
+  expect(c.desencalhes).toBe(1);
+});

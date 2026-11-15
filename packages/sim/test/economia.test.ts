@@ -40,7 +40,7 @@ test('iniciarEconomia: $800, sem equipamento e só pistola e faca no primeiro ro
 test('comprar arma: desconta, entrega na hora e põe na mão', () => {
   const m = cenario();
   const e = m.entidades[0];
-  e.dinheiro = 3000;
+  e.dinheiro = 3400; // rifle a $3100 desde a Task 10 (era $3000 com o rifle a $2700)
   const r = E.comprar(e, 'rifle', 'CT');
   expect(r.ok).toBeTruthy();
   expect(e.dinheiro).toBe(300);
@@ -93,14 +93,16 @@ test('fim de round: vitória $3250; derrotas seguidas sobem o bônus até $3400'
   for (const e of m.entidades) e.dinheiro = 0;
   E.premiarRound(m, p, 'azul');
   expect(m.entidades[0].dinheiro).toBe(ECONOMIA.vitoria);
-  expect(m.entidades[9].dinheiro).toBe(1400);
+  // Task 10 (balanceamento): bônus de derrota +$500 em cada degrau (era 1400..3400). Segura a bola de neve
+  // do lado que perde; no fácil os Ts perdiam e ficavam sem dinheiro (vitória T 40%).
+  expect(m.entidades[9].dinheiro).toBe(1900);
   const seq = [];
   for (let i = 0; i < 6; i++) {
     for (const e of m.entidades) e.dinheiro = 0;
     E.premiarRound(m, p, 'azul');
     seq.push(m.entidades[9].dinheiro);
   }
-  expect(seq).toStrictEqual([1900, 2400, 2900, 3400, 3400, 3400]);
+  expect(seq).toStrictEqual([2400, 2900, 3400, 3400, 3400, 3400]);
   // O laranja ganha um round: a sequência dele cai uma.
   for (const e of m.entidades) e.dinheiro = 0;
   E.premiarRound(m, p, 'laranja');
@@ -114,7 +116,7 @@ test('empate conta como derrota para os dois; dinheiro limitado a $16000', () =>
   m.entidades[0].dinheiro = 15500;
   E.premiarRound(m, p, null);
   expect(m.entidades[0].dinheiro).toBe(ECONOMIA.maximo);
-  expect(m.entidades[9].dinheiro).toBe(800 + 1400);
+  expect(m.entidades[9].dinheiro).toBe(800 + 1900);
 });
 
 test('resetarEconomia (intervalo) zera dinheiro, equipamento e sequência', () => {
@@ -212,7 +214,7 @@ test('botComprar: sem dinheiro só colete; com dinheiro, arma + colete com capac
   expect(rico.equip.capacete).toBeTruthy();
   expect(rico.equip.kit).toBeTruthy();
   const medio = m.entidades[4];
-  medio.dinheiro = 3000;
+  medio.dinheiro = 3400; // cabe o rifle ($3100 desde a Task 10), não a sniper + colete
   medio.primariaEscolhida = 'sniper';
   E.botComprar(medio, 'T');
   expect(medio.equip.primaria, 'sniper não cabe: cai para o rifle').toBe('rifle');
@@ -225,4 +227,11 @@ test('sem economia (treino) nada muda: todos têm primária e dano sem colete', 
   posicionarParaRound(m, 'A');
   expect(m.economia).toBe(undefined);
   expect(m.entidades[0].armas!.primaria!.tipo).toBe('smg');
+});
+
+// Task 10 (balanceamento): o rifle passou de $2700 para $3100, o preço do fuzil. Era a arma mais comprada
+// (preferência de 35% dos bots e reserva de quem não alcança sniper/fuzil) e passava de 35% das kills.
+test('o rifle custa $3100, o mesmo que o fuzil', () => {
+  expect(ITENS.rifle.preco).toBe(3100);
+  expect(ITENS.rifle.preco).toBe(ITENS.fuzil.preco);
 });
