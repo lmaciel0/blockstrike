@@ -287,6 +287,8 @@ export interface Dificuldade {
   chanceCabeca: number;
   alturaTronco?: number;
   toleranciaTiro: number;
+  /** Tronco escondido e a cabeça à vista: mira na cabeça (só o difícil). Senão segue no tronco e não atira. */
+  trocaParaCabeca: boolean;
   mao: PerfilMao;
 }
 export type NomeDificuldade = 'facil' | 'medio' | 'dificil';

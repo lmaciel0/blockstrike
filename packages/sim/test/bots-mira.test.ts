@@ -3,7 +3,7 @@ import { pensar } from '../src/bots.js';
 import { criarMundo, posicionarParaRound, passo } from '../src/mundo.js';
 import { criarGrafo } from '../src/navegacao.js';
 import { angulo, olho } from '../src/fisica.js';
-import { DIFICULDADE } from '../src/config.js';
+import { ARMAS, DIFICULDADE, RECUO_MAX } from '../src/config.js';
 import { MAPA } from '../src/mapa.js';
 import { criarRng } from '../src/rng.js';
 import type { Arma, ArmasEntidade, Caixa, Comandos, Entidade, Mundo, NomeDificuldade, Rng } from '../src/tipos.js';
@@ -269,6 +269,32 @@ test('mira: inimigo nunca visto começa a reação do zero', () => {
     expect(quadros[VOLTA].vistoHa, `${nome}: reação não começou do zero`).toBeLessThanOrEqual(DT + 1e-9);
     for (const q of quadros.slice(VOLTA)) {
       if (q.cmd.atirar) expect(q.t - quadros[VOLTA].t, `${nome}: atirou cedo`).toBeGreaterThanOrEqual(dif.reacao - 1e-9);
+    }
+  }
+});
+
+// Tronco atrás de caixa de 1,2 m (z -9..-8), cabeça visível; alvo a 10 m de frente, `c.cabeca` sempre false.
+// Fácil e médio continuam no tronco escondido e não atiram; só o difícil troca para a cabeça.
+test('mira: tronco escondido, só o difícil troca para a cabeça', () => {
+  for (const nome of NOMES) {
+    const caixa: Caixa = { min: { x: -3, y: 0, z: -9 }, max: { x: 3, y: 1.2, z: -8 }, cor: 1 };
+    const { mundo, b, a } = cena({ caixas: [chao, caixa], alvo: { x: 0, y: 0, z: -10 } });
+    const quadros = rodar(mundo, b, nome, 120, criarRng(21), () => {
+      if (b.cerebro) b.cerebro.cabeca = false;
+    });
+    const o = olho(b);
+    const distancia = Math.hypot(a.pos.x - o.x, a.pos.z - o.z);
+    // A mira do bot desce o recuo do próximo tiro (`atacar`); o difícil atira na cabeça, então o recuo acumula.
+    const recuo = Math.min(b.armas.primaria.recuoAcum + ARMAS.rifle.recuo, RECUO_MAX);
+    const pitchDe = (y: number): number => Math.atan2(y - o.y, distancia) - recuo;
+    const tronco = pitchDe(DIFICULDADE[nome].alturaTronco ?? 1.1);
+    const cabeca = pitchDe(1.6);
+    const pitch = quadros.at(-1)!.cmd.pitch;
+    if (nome === 'dificil') {
+      expect(Math.abs(pitch - cabeca), `${nome}: pitch ${pitch.toFixed(4)} x cabeça ${cabeca.toFixed(4)}`).toBeLessThan(0.025);
+    } else {
+      expect(Math.abs(pitch - tronco), `${nome}: pitch ${pitch.toFixed(4)} x tronco ${tronco.toFixed(4)}`).toBeLessThan(0.025);
+      expect(quadros.some((q) => q.cmd.atirar), `${nome}: atirou no tronco escondido`).toBeFalsy();
     }
   }
 });

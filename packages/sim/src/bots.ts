@@ -504,7 +504,8 @@ interface Angulos { yaw: number; pitch: number }
 /** Amostra percebida já adiantada pela previsão, com a velocidade (m/s, XZ) com que o ponto anda agora. */
 type Previsto = Amostra & { vel: { x: number; z: number } };
 /** Ângulos de mira e, se o ponto anda, a velocidade angular dele (rad/s) para o feedforward da mão. */
-type Mira = Angulos & { vel?: Angulos };
+// `semVisada`: o ponto mirado está escondido (tronco atrás de caixa e o bot não troca para a cabeça): não atira.
+type Mira = Angulos & { vel?: Angulos; semVisada?: boolean };
 
 // Leva a mira pela mão virtual (mao.ts) até `alvo`; o pitch fica dentro do mesmo limite do `passo`.
 function mirarComMao(
@@ -550,15 +551,22 @@ function velocidadeAngular(o: Vec3, ponto: Vec3, v: { x: number; z: number }): A
   return { yaw: (dz * v.x - dx * v.z) / h2, pitch: (-dy * dh) / (h2 + dy * dy) };
 }
 
-// Yaw/pitch do ponto (cabeça ou tronco, `c.cabeca`) de onde o alvo foi percebido; parte escondida (atrás de
-// caixa baixa, por exemplo) → mira na outra.
+// Yaw/pitch do ponto (cabeça ou tronco, `c.cabeca`) de onde o alvo foi percebido. Cabeça escondida → tronco (todas as
+// dificuldades). Tronco escondido → cabeça só se `dif.trocaParaCabeca` (difícil); senão segue no tronco, sem visada
+// (`semVisada`), e o gatilho espera.
 function miraNoPercebido(ent: Entidade, c: Cerebro, p: Previsto, dif: Dificuldade, mundo: Mundo): Mira {
   const o = olho(ent);
   const corpo = pontosDoCorpo(p, dif.alturaTronco);
   let ponto = c.cabeca ? corpo.cabeca : corpo.tronco;
-  if (!temVisada(o, ponto, mundo.mapa.caixas)) ponto = c.cabeca ? corpo.tronco : corpo.cabeca;
+  let semVisada = false;
+  if (!temVisada(o, ponto, mundo.mapa.caixas)) {
+    if (c.cabeca) ponto = corpo.tronco;
+    else if (dif.trocaParaCabeca) ponto = corpo.cabeca;
+    else semVisada = true;
+  }
   return {
     yaw: yawPara(o, ponto), pitch: Math.atan2(ponto.y - o.y, distXZ(o, ponto)), vel: velocidadeAngular(o, ponto, p.vel),
+    semVisada,
   };
 }
 
@@ -602,7 +610,7 @@ function atacar(
   c.municaoVista = { slot: ent.slot, n: arma.municao };
 
   // Gatilho: a mira real (depois da mão) perto do ponto percebido, nos dois eixos.
-  const mirando = mira !== null && Math.abs(angulo(mira.yaw - cmd.yaw)) < dif.toleranciaTiro
+  const mirando = mira !== null && !mira.semVisada && Math.abs(angulo(mira.yaw - cmd.yaw)) < dif.toleranciaTiro
     && Math.abs(mira.pitch - cmd.pitch) < dif.toleranciaTiro;
   const pronto = c.vistoHa >= dif.reacao && mirando && arma.recarregandoAte === 0 && arma.municao > 0;
   if (def.auto) {
