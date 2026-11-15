@@ -25,7 +25,8 @@ function distXZ(grafo: Grafo, a: number, b: number): number {
 }
 
 // Ids do caminho mais curto, incluindo as duas pontas; [] se não houver.
-export function caminho(grafo: Grafo, deId: number, paraId: number): number[] {
+// `proibidos`: ids por onde o caminho não passa (as pontas nunca são proibidas).
+export function caminho(grafo: Grafo, deId: number, paraId: number, proibidos?: ReadonlySet<number>): number[] {
   if (deId === paraId) return [deId];
   const g = new Map([[deId, 0]]);
   const veio = new Map<number, number>();
@@ -43,7 +44,7 @@ export function caminho(grafo: Grafo, deId: number, paraId: number): number[] {
     }
     fechada.add(atual);
     for (const { id, custo } of grafo.vizinhos[atual]) {
-      if (fechada.has(id)) continue;
+      if (fechada.has(id) || (proibidos?.has(id) && id !== paraId)) continue;
       const novo = g.get(atual)! + custo;
       if (g.has(id) && novo >= g.get(id)!) continue;
       g.set(id, novo);

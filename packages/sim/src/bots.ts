@@ -137,12 +137,58 @@ function objetivo(ent: Entidade, grafo: Grafo, rng: Rng, faixaPedida: number | n
   return opcoes[Math.floor(rng() * opcoes.length)].id;
 }
 
+// Alternativa de rota só vale até 1,7× o comprimento do caminho mais curto. No mapa real, evitar todos os waypoints
+// internos da rota do índice 0 custa 1,546× (site A) e 1,656× (site B); 1,5 e 1,6 deixariam o B sem alternativa.
+export const ROTA_ALT_MAX = 1.7;
+
+// Comprimento da rota em metros (soma das arestas, em xz).
+export function comprimento(grafo: Grafo, rota: number[]): number {
+  let soma = 0;
+  for (let i = 1; i < rota.length; i++) {
+    soma += Math.hypot(grafo.nos[rota[i]].x - grafo.nos[rota[i - 1]].x, grafo.nos[rota[i]].z - grafo.nos[rota[i - 1]].z);
+  }
+  return soma;
+}
+
+// Rota de `de` até `para` que evita os waypoints internos das rotas dos colegas anteriores (todas, depois só a
+// do primeiro); sem alternativa dentro de ROTA_ALT_MAX, o caminho mais curto. Determinística, sem sorteio.
+export function escolherRota(grafo: Grafo, de: number, para: number, anteriores: number[][]): number[] {
+  const curta = caminho(grafo, de, para);
+  if (!curta.length || !anteriores.length) return curta;
+  const limite = ROTA_ALT_MAX * comprimento(grafo, curta);
+  const aceita = (r: number[]): boolean => r.length > 0 && comprimento(grafo, r) <= limite;
+  const internos = (rotas: number[][]): Set<number> => new Set(rotas.flatMap((r) => r.slice(1, -1)));
+  const todas = caminho(grafo, de, para, internos(anteriores));
+  if (aceita(todas)) return todas;
+  const primeira = caminho(grafo, de, para, internos(anteriores.slice(0, 1)));
+  return aceita(primeira) ? primeira : curta;
+}
+
+// Rota de ida do CT até o `espera`: cada colega do mesmo site de índice menor tem a sua recalculada pela mesma regra,
+// e o CT desvia delas. Só depende de ids, posições de nascimento e do grafo.
+function rotaDeCT(ent: Entidade, grafo: Grafo, caixas: Caixa[], destino: number | null, mundo: Mundo): number[] {
+  const de = waypointPerto(grafo, ent.pos, caixas);
+  if (de === null || destino === null) return [];
+  const rotas: number[][] = [];
+  const colegas = mundo.entidades.filter((o) => o.time === ent.time && o.id % 2 === ent.id % 2 && o.id < ent.id)
+    .sort((a, b) => a.id - b.id);
+  for (const o of colegas) {
+    const deO = waypointPerto(grafo, o.pos, caixas);
+    const destinoO = destinoBomba(o, mundo, o.pos.z >= 0 ? 0 : 1)?.waypoint;
+    if (deO === null || destinoO === undefined) continue;
+    rotas.push(escolherRota(grafo, deO, destinoO, rotas));
+  }
+  return escolherRota(grafo, de, destino, rotas);
+}
+
 // Rota do começo do round. Os Ts indo ao bombsite se dividem como num time de CS: metade pela rota do
 // próprio site, metade pelo meio. Sem isso os cinco seguiam o mesmo caminho mais curto, em fila.
+// Os CTs indo ao posto desviam das rotas dos colegas do mesmo site.
 function rotaDoRound(
   ent: Entidade, grafo: Grafo, caixas: Caixa[], destino: number | null, bomba: DestinoBomba | null, mundo: Mundo | null,
   indice: number,
 ): number[] {
+  if (mundo && bomba?.chave.startsWith('espera:')) return rotaDeCT(ent, grafo, caixas, destino, mundo);
   if (!bomba?.chave.startsWith('site:') || ent.time !== mundo!.bomba!.terroristas || mundo!.bomba!.plantada) {
     return rotaAte(ent, grafo, caixas, destino);
   }

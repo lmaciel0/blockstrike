@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { criarMundo, posicionarParaRound, passo } from '../src/mundo.js';
 import { criarBomba } from '../src/bomba.js';
-import { pensar, criarCerebro, pontoDoPosto, pontosLivresDoPosto } from '../src/bots.js';
+import { pensar, criarCerebro, pontoDoPosto, pontosLivresDoPosto, escolherRota, comprimento, ROTA_ALT_MAX } from '../src/bots.js';
 import { criarGrafo } from '../src/navegacao.js';
 import { MAPA } from '../src/mapa.js';
 import { criarRng } from '../src/rng.js';
@@ -167,9 +167,9 @@ test('posto: pontos bloqueados são pulados e os CTs seguem espalhados', () => {
 
     const c = cenario(seed, mapa);
     matar(c.mundo, 'laranja');
-    rodar(c, 18);
+    rodar(c, 25); // o 2º CT de cada site agora faz uma rota mais longa e chega mais tarde
     let moveu = 0;
-    for (let i = 0; i < 40; i++) { // últimos 2 s
+    for (let i = 0; i < 40; i++) { // 2 s depois dos 25 s
       const cmds = new Map<number, Comandos>();
       for (const e of c.mundo.entidades) if (e.vivo) cmds.set(e.id, pensar(e, c.mundo, c.grafo, 'medio', 0.05, c.rng));
       for (const e of ctsDoA(c.mundo)) {
@@ -205,4 +205,41 @@ test('posto: sem ponto livre, o ponto do CT é o próprio waypoint', () => {
   // Sem a caixa há candidatos livres e o ponto não é o waypoint para quem tem índice > 0.
   const livre = cenario(3);
   expect(pontosLivresDoPosto(livre.mundo, 'A', 0).length).toBeGreaterThan(1);
+});
+
+// ---------- CTs na ida: caminhos diferentes até o posto ----------
+test('na ida os CTs do mesmo site não seguem o mesmo caminho', () => {
+  for (const seed of SEEDS) {
+    const c = cenario(seed);
+    for (const [site, paridade] of [['A', 0], ['B', 1]] as const) {
+      const [a, b] = cts(c.mundo).filter((e) => e.id % 2 === paridade).sort((x, y) => x.id - y.id);
+      const ra = (a.cerebro as Cerebro).rota;
+      const rb = (b.cerebro as Cerebro).rota;
+      const internos = (r: number[]): number[] => r.slice(1, -1);
+      const diferem = internos(ra).some((id) => !rb.includes(id)) || internos(rb).some((id) => !ra.includes(id));
+      expect(diferem, `seed ${seed} site ${site}: rotas ${ra} e ${rb}`).toBeTruthy();
+    }
+  }
+});
+
+test('rota: sem alternativa usa o caminho mais curto', () => {
+  // Grafo em linha 0-1-2-3: o índice 1 não tem outro caminho e repete o do índice 0.
+  const linha = criarGrafo(
+    [0, 1, 2, 3].map((i) => ({ id: i, x: i * 10, z: 0 })), [[0, 1], [1, 2], [2, 3]],
+  );
+  const r0 = escolherRota(linha, 0, 3, []);
+  expect(r0).toStrictEqual([0, 1, 2, 3]);
+  expect(escolherRota(linha, 0, 3, [r0])).toStrictEqual(r0);
+});
+
+test('rota: alternativa mais longa que ROTA_ALT_MAX é descartada', () => {
+  // Losango: 0-1-3 curto (20 m); 0-2-3 dá a volta por um ponto longe.
+  const g = criarGrafo(
+    [{ id: 0, x: 0, z: 0 }, { id: 1, x: 10, z: 1 }, { id: 2, x: 10, z: -30 }, { id: 3, x: 20, z: 0 }],
+    [[0, 1], [1, 3], [0, 2], [2, 3]],
+  );
+  const curta = escolherRota(g, 0, 3, []);
+  expect(curta).toStrictEqual([0, 1, 3]);
+  expect(comprimento(g, [0, 2, 3])).toBeGreaterThan(ROTA_ALT_MAX * comprimento(g, curta));
+  expect(escolherRota(g, 0, 3, [curta])).toStrictEqual(curta);
 });
