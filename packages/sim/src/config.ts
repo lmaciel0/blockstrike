@@ -171,20 +171,24 @@ export const ARMAS: Record<TipoArma, DefArma> = {
 export const familia = (tipo: TipoArma): TipoArma => ARMAS[tipo]?.familia ?? tipo;
 
 // reacao em segundos (>= mao.atraso); chanceCabeca em [0,1]; alturaTronco em m (ponto de mira no corpo);
-// toleranciaTiro em rad; trocaParaCabeca = mira na cabeça quando o tronco está escondido (só o difícil); mao = perfil da mão virtual (atraso para começar a mirar, mola, aceleração, tremor e previsão).
-// chanceCabeca do difícil (0,1) fica abaixo da do médio porque o `trocaParaCabeca` já leva parte da mira à cabeça:
+// toleranciaTiro em rad; trocaParaCabecaApos = s com o tronco escondido (e a cabeça à vista) até mirar na cabeça (difícil
+// 0 = na hora); mao = perfil da mão virtual (atraso para começar a mirar, mola, aceleração, tremor e previsão).
+// chanceCabeca do difícil (0,1) fica abaixo da do médio porque o `trocaParaCabecaApos` 0 já leva parte da mira à cabeça:
 // com 0,35 o headshot do difícil dava 60% (meta 40–50%); 0,2 → 55%, 0,1 → 48% (Task H3, 30 seeds).
+// trocaParaCabecaApos do fácil (0,5) e do médio (0,7): o maior valor com 0 mudos e 1º acerto ≤ 1,5 / 1,0 s (Task H4,
+// 30 seeds). Fácil: 0,55 já tem 1 mudo e 0,6 dá 1,53 s; o headshot (36%) fica acima da meta 15–25% em todo valor
+// com 1º acerto ≤ 1,5 s. Médio: 0,7 → headshot 39%, 1º acerto 1,00 s; 0,75 já passa de 1,0 s.
 export const DIFICULDADE: Record<NomeDificuldade, Dificuldade> = {
   facil: {
-    reacao: 0.75, chanceCabeca: 0.02, alturaTronco: 0.95, toleranciaTiro: 0.05, trocaParaCabeca: false,
+    reacao: 0.75, chanceCabeca: 0.02, alturaTronco: 0.95, toleranciaTiro: 0.05, trocaParaCabecaApos: 0.5,
     mao: { atraso: 0.5, firmeza: 9, amortecimento: 0.55, acelMax: 60, tremor: 0.012, previsao: 0.8 },
   },
   medio: {
-    reacao: 0.5, chanceCabeca: 0.2, alturaTronco: 0.95, toleranciaTiro: 0.035, trocaParaCabeca: false,
+    reacao: 0.5, chanceCabeca: 0.2, alturaTronco: 0.95, toleranciaTiro: 0.035, trocaParaCabecaApos: 0.7,
     mao: { atraso: 0.35, firmeza: 12, amortecimento: 0.6, acelMax: 90, tremor: 0.008, previsao: 0.85 },
   },
   dificil: {
-    reacao: 0.3, chanceCabeca: 0.1, alturaTronco: 1.0, toleranciaTiro: 0.025, trocaParaCabeca: true,
+    reacao: 0.3, chanceCabeca: 0.1, alturaTronco: 1.0, toleranciaTiro: 0.025, trocaParaCabecaApos: 0,
     mao: { atraso: 0.22, firmeza: 16, amortecimento: 0.7, acelMax: 140, tremor: 0.005, previsao: 0.85 },
   },
 };

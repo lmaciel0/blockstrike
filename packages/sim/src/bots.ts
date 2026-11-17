@@ -233,7 +233,7 @@ export function criarCerebro(
     ouvidoEm: -Infinity, ouvidoAte: 0, ouvidoPos: null, chaveBomba: bomba ? bomba.chave : null,
     proxGranada: 0, cegoVisto: 0, casaZ,
     desvioMira: sortear(rng, [-desvio, desvio]), desencalhes: 0,
-    percepcao: [], mao: criarMao(),
+    percepcao: [], mao: criarMao(), troncoEscondidoDesde: null,
   };
 }
 
@@ -504,7 +504,7 @@ interface Angulos { yaw: number; pitch: number }
 /** Amostra percebida já adiantada pela previsão, com a velocidade (m/s, XZ) com que o ponto anda agora. */
 type Previsto = Amostra & { vel: { x: number; z: number } };
 /** Ângulos de mira e, se o ponto anda, a velocidade angular dele (rad/s) para o feedforward da mão. */
-// `semVisada`: o ponto mirado está escondido (tronco atrás de caixa e o bot não troca para a cabeça): não atira.
+// `semVisada`: o ponto mirado está escondido (tronco atrás de caixa e o bot ainda não trocou para a cabeça): não atira.
 type Mira = Angulos & { vel?: Angulos; semVisada?: boolean };
 
 // Leva a mira pela mão virtual (mao.ts) até `alvo`; o pitch fica dentro do mesmo limite do `passo`.
@@ -552,16 +552,22 @@ function velocidadeAngular(o: Vec3, ponto: Vec3, v: { x: number; z: number }): A
 }
 
 // Yaw/pitch do ponto (cabeça ou tronco, `c.cabeca`) de onde o alvo foi percebido. Cabeça escondida → tronco (todas as
-// dificuldades). Tronco escondido → cabeça só se `dif.trocaParaCabeca` (difícil); senão segue no tronco, sem visada
-// (`semVisada`), e o gatilho espera.
+// dificuldades). Tronco escondido → conta desde quando (`c.troncoEscondidoDesde`); passados `dif.trocaParaCabecaApos`
+// s (difícil: 0, na hora) mira na cabeça; antes disso segue no tronco, sem visada (`semVisada`), e o gatilho espera.
+// Tronco à vista zera a contagem.
 function miraNoPercebido(ent: Entidade, c: Cerebro, p: Previsto, dif: Dificuldade, mundo: Mundo): Mira {
   const o = olho(ent);
   const corpo = pontosDoCorpo(p, dif.alturaTronco);
   let ponto = c.cabeca ? corpo.cabeca : corpo.tronco;
   let semVisada = false;
-  if (!temVisada(o, ponto, mundo.mapa.caixas)) {
-    if (c.cabeca) ponto = corpo.tronco;
-    else if (dif.trocaParaCabeca) ponto = corpo.cabeca;
+  const visada = temVisada(o, ponto, mundo.mapa.caixas);
+  if (c.cabeca) {
+    if (!visada) ponto = corpo.tronco;
+  } else if (visada) {
+    c.troncoEscondidoDesde = null;
+  } else {
+    c.troncoEscondidoDesde ??= mundo.tempo;
+    if (mundo.tempo - c.troncoEscondidoDesde >= dif.trocaParaCabecaApos) ponto = corpo.cabeca;
     else semVisada = true;
   }
   return {
@@ -766,7 +772,7 @@ export function pensar(
       // espiou há pouco não começa do zero (dois inimigos se revezando na mesma porta zeravam a reação a cada troca).
       // Inimigo nunca visto começa em 0, como antes.
       const vistoHa = agora - vistoDesde(c.percepcao, alvo.id, agora);
-      Object.assign(c, { alvoId: alvo.id, vistoHa, emRajada: false, rajada: 0, refazerEm: 0 });
+      Object.assign(c, { alvoId: alvo.id, vistoHa, emRajada: false, rajada: 0, refazerEm: 0, troncoEscondidoDesde: null });
       c.cabeca = rng() < dif.chanceCabeca;
     }
     c.vistoHa += dt;

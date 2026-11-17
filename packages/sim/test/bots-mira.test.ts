@@ -6,7 +6,9 @@ import { angulo, olho } from '../src/fisica.js';
 import { ARMAS, DIFICULDADE, RECUO_MAX } from '../src/config.js';
 import { MAPA } from '../src/mapa.js';
 import { criarRng } from '../src/rng.js';
-import type { Arma, ArmasEntidade, Caixa, Comandos, Entidade, Mundo, NomeDificuldade, Rng } from '../src/tipos.js';
+import type {
+  Arma, ArmasEntidade, Caixa, Comandos, Dificuldade, Entidade, Mundo, NomeDificuldade, Rng,
+} from '../src/tipos.js';
 
 // Mira humana (Task 7): o bot mira onde percebeu o alvo `mao.atraso` s atrás e move yaw/pitch pela mão virtual.
 const DT = 1 / 60;
@@ -49,7 +51,7 @@ interface Quadro { t: number; cmd: Comandos; vistoHa: number }
 
 // `n` passos de pensar + passo (só o bot pensa); `antes(i, t)` mexe na cena antes de cada pensar.
 function rodar(
-  mundo: Mundo, b: Bot, dif: NomeDificuldade, n: number, rng: Rng = criarRng(7),
+  mundo: Mundo, b: Bot, dif: NomeDificuldade | Dificuldade, n: number, rng: Rng = criarRng(7),
   antes: (i: number, t: number) => void = () => {},
 ): Quadro[] {
   const quadros: Quadro[] = [];
@@ -273,34 +275,98 @@ test('mira: inimigo nunca visto começa a reação do zero', () => {
   }
 });
 
-// Tronco atrás de caixa de 1,2 m (z -9..-8), cabeça visível; alvo a 10 m de frente, `c.cabeca` sempre false.
-// Fácil e médio continuam no tronco escondido e não atiram; só o difícil troca para a cabeça.
-test('mira: tronco escondido, só o difícil troca para a cabeça', () => {
-  for (const nome of NOMES) {
-    const caixa: Caixa = { min: { x: -3, y: 0, z: -9 }, max: { x: 3, y: 1.2, z: -8 }, cor: 1 };
-    const { mundo, b, a } = cena({ caixas: [chao, caixa], alvo: { x: 0, y: 0, z: -10 } });
-    const quadros = rodar(mundo, b, nome, 120, criarRng(21), () => {
-      if (b.cerebro) b.cerebro.cabeca = false;
-    });
-    const o = olho(b);
-    const distancia = Math.hypot(a.pos.x - o.x, a.pos.z - o.z);
-    // A mira do bot desce o recuo do próximo tiro (`atacar`); o difícil atira na cabeça, então o recuo acumula.
-    const recuo = Math.min(b.armas.primaria.recuoAcum + ARMAS.rifle.recuo, RECUO_MAX);
-    const pitchDe = (y: number): number => Math.atan2(y - o.y, distancia) - recuo;
-    const tronco = pitchDe(DIFICULDADE[nome].alturaTronco ?? 1.1);
-    const cabeca = pitchDe(1.6);
-    const pitch = quadros.at(-1)!.cmd.pitch;
-    if (nome === 'dificil') {
-      expect(Math.abs(pitch - cabeca), `${nome}: pitch ${pitch.toFixed(4)} x cabeça ${cabeca.toFixed(4)}`).toBeLessThan(0.025);
-    } else {
-      expect(Math.abs(pitch - tronco), `${nome}: pitch ${pitch.toFixed(4)} x tronco ${tronco.toFixed(4)}`).toBeLessThan(0.025);
-      expect(quadros.some((q) => q.cmd.atirar), `${nome}: atirou no tronco escondido`).toBeFalsy();
-    }
+// Tronco atrás de caixa de 1,2 m (z -9..-8), cabeça visível; alvo a 10 m de frente, `c.cabeca` sempre false (`forcar`).
+// O bot começa com o pitch no tronco: só a troca para a cabeça faz a mão subir.
+function cenaTronco(nome: NomeDificuldade): { mundo: Mundo; b: Bot; a: Entidade; caixa: Caixa; forcar: () => void } {
+  const caixa: Caixa = { min: { x: -3, y: 0, z: -9 }, max: { x: 3, y: 1.2, z: -8 }, cor: 1 };
+  const { mundo, b, a } = cena({ caixas: [chao, caixa], alvo: { x: 0, y: 0, z: -10 } });
+  b.pitch = pitchesTronco(b, a, nome).tronco;
+  return { mundo, b, a, caixa, forcar: () => { if (b.cerebro) b.cerebro.cabeca = false; } };
+}
+
+// Pitch esperado do tronco e da cabeça; a mira desce o recuo do próximo tiro (`atacar`).
+function pitchesTronco(b: Bot, a: Entidade, nome: NomeDificuldade): { tronco: number; cabeca: number } {
+  const o = olho(b);
+  const distancia = Math.hypot(a.pos.x - o.x, a.pos.z - o.z);
+  const recuo = Math.min(b.armas.primaria.recuoAcum + ARMAS.rifle.recuo, RECUO_MAX);
+  const pitchDe = (y: number): number => Math.atan2(y - o.y, distancia) - recuo;
+  return { tronco: pitchDe(DIFICULDADE[nome].alturaTronco ?? 1.1), cabeca: pitchDe(1.6) };
+}
+
+// Roda até a primeira vez que o bot vê o tronco escondido (`troncoEscondidoDesde` gravado) e devolve esse quadro.
+function ateEsconder(mundo: Mundo, b: Bot, nome: NomeDificuldade, rng: Rng, forcar: () => void): Quadro {
+  for (let i = 0; i < 120; i++) {
+    const [q] = rodar(mundo, b, nome, 1, rng, forcar);
+    if (b.cerebro?.troncoEscondidoDesde != null) return q;
   }
+  throw new Error(`${nome}: nunca gravou troncoEscondidoDesde`);
+}
+
+const perto = (x: number, y: number): boolean => Math.abs(x - y) < 0.025;
+
+test('mira: tronco escondido, fácil e médio só trocam para a cabeça depois de trocaParaCabecaApos', () => {
+  for (const nome of ['facil', 'medio'] as NomeDificuldade[]) {
+    const apos = DIFICULDADE[nome].trocaParaCabecaApos;
+    expect(apos, `${nome}: espera positiva`).toBeGreaterThan(0);
+    const { mundo, b, a, forcar } = cenaTronco(nome);
+    const rng = criarRng(21);
+    const q0 = ateEsconder(mundo, b, nome, rng, forcar);
+    expect(b.cerebro!.troncoEscondidoDesde, `${nome}: grava o instante`).toBe(q0.t);
+    // Antes do tempo: segue no tronco escondido e não atira (regressão da H1).
+    const antes = rodar(mundo, b, nome, Math.floor(apos / DT) - 2, rng, forcar);
+    expect(antes.at(-1)!.t, `${nome}: ainda antes do tempo`).toBeLessThan(q0.t + apos);
+    expect(antes.some((q) => q.cmd.atirar), `${nome}: atirou no tronco escondido`).toBeFalsy();
+    const p1 = pitchesTronco(b, a, nome);
+    expect(perto(antes.at(-1)!.cmd.pitch, p1.tronco), `${nome}: pitch ${antes.at(-1)!.cmd.pitch.toFixed(4)} x tronco ${p1.tronco.toFixed(4)}`).toBeTruthy();
+    // Depois do tempo: mira na cabeça e o gatilho volta a valer.
+    const depois = rodar(mundo, b, nome, Math.round(1 / DT), rng, forcar);
+    expect(depois.some((q) => q.cmd.atirar), `${nome}: não atirou na cabeça`).toBeTruthy();
+    expect(depois.find((q) => q.cmd.atirar)!.t, `${nome}: atirou antes do tempo`).toBeGreaterThanOrEqual(q0.t + apos - 1e-9);
+    const p2 = pitchesTronco(b, a, nome);
+    expect(perto(depois.at(-1)!.cmd.pitch, p2.cabeca), `${nome}: pitch ${depois.at(-1)!.cmd.pitch.toFixed(4)} x cabeça ${p2.cabeca.toFixed(4)}`).toBeTruthy();
+  }
+});
+
+test('mira: tronco aparece e some de novo, a contagem para a cabeça recomeça do zero', () => {
+  for (const nome of ['facil', 'medio'] as NomeDificuldade[]) {
+    const apos = DIFICULDADE[nome].trocaParaCabecaApos;
+    const { mundo, b, a, caixa, forcar } = cenaTronco(nome);
+    const rng = criarRng(21);
+    const q0 = ateEsconder(mundo, b, nome, rng, forcar);
+    rodar(mundo, b, nome, Math.round((0.5 * apos) / DT), rng, forcar);
+    // A caixa sai por 3 quadros: o tronco aparece e a contagem zera.
+    mundo.mapa.caixas.splice(mundo.mapa.caixas.indexOf(caixa), 1);
+    rodar(mundo, b, nome, 3, rng, forcar);
+    expect(b.cerebro!.troncoEscondidoDesde, `${nome}: tronco à vista zera a contagem`).toBe(null);
+    mundo.mapa.caixas.push(caixa);
+    const [volta] = rodar(mundo, b, nome, 1, rng, forcar);
+    expect(b.cerebro!.troncoEscondidoDesde, `${nome}: recomeça na volta da caixa`).toBe(volta.t);
+    // Passa do tempo contado desde o primeiro sumiço, mas não do novo: segue no tronco, sem atirar.
+    const resto = rodar(mundo, b, nome, Math.floor(apos / DT) - 2, rng, forcar);
+    expect(resto.at(-1)!.t, `${nome}: passou do tempo antigo`).toBeGreaterThan(q0.t + apos);
+    expect(resto.some((q) => q.cmd.atirar), `${nome}: atirou antes da nova contagem`).toBeFalsy();
+    const p = pitchesTronco(b, a, nome);
+    expect(perto(resto.at(-1)!.cmd.pitch, p.tronco), `${nome}: pitch ${resto.at(-1)!.cmd.pitch.toFixed(4)} x tronco ${p.tronco.toFixed(4)}`).toBeTruthy();
+  }
+});
+
+test('mira: tronco escondido, o difícil troca para a cabeça já no primeiro quadro', () => {
+  const nome: NomeDificuldade = 'dificil';
+  expect(DIFICULDADE[nome].trocaParaCabecaApos).toBe(0);
+  const { mundo, b, a, forcar } = cenaTronco(nome);
+  const rng = criarRng(21);
+  const inicio = b.pitch;
+  const q0 = ateEsconder(mundo, b, nome, rng, forcar);
+  // A mão sai do tronco para cima já no quadro em que o tronco some.
+  expect(q0.cmd.pitch, 'difícil: a mão não subiu no primeiro quadro').toBeGreaterThan(inicio + 1e-4);
+  const depois = rodar(mundo, b, nome, Math.round(0.5 / DT), rng, forcar);
+  const p = pitchesTronco(b, a, nome);
+  expect(perto(depois.at(-1)!.cmd.pitch, p.cabeca), `difícil: pitch ${depois.at(-1)!.cmd.pitch.toFixed(4)} x cabeça ${p.cabeca.toFixed(4)}`).toBeTruthy();
 });
 
 // Tronco escondido, cabeça à vista, a 25 m (além do alcance ideal de 15 m da pistola e de 20 m do rifle): sem visada
 // o bot não conta como "disparando", então não fica parado olhando o tronco: segue avançando e não atira.
+// `trocaParaCabecaApos` infinito: o bot nunca troca para a cabeça, e o teste mede só o caminho sem visada.
 // Rifle (automática): `disparando` exige `emRajada`; o caso que trava é o da rajada em curso quando o tronco some.
 test('mira: tronco escondido sem troca não trava o bot parado (pistola e rifle)', () => {
   for (const slot of ['pistola', 'primaria'] as const) {
@@ -310,7 +376,8 @@ test('mira: tronco escondido sem troca não trava o bot parado (pistola e rifle)
       b.slot = slot;
       const reacao = DIFICULDADE[nome].reacao;
       const rotulo = `${nome}/${slot}`;
-      const quadros = rodar(mundo, b, nome, 240, criarRng(23), (i) => {
+      const semTroca: Dificuldade = { ...DIFICULDADE[nome], trocaParaCabecaApos: Infinity };
+      const quadros = rodar(mundo, b, semTroca, 240, criarRng(23), (i) => {
         const c = b.cerebro;
         if (c) c.cabeca = false;
         if (c && i === 1 && slot === 'primaria') {

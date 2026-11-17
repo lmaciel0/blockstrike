@@ -273,6 +273,8 @@ export interface Cerebro {
   percepcao: Amostra[];
   /** Mão virtual do bot: mira, olhar para o ruído e olhar para o dano dividem a mesma (a velocidade continua). */
   mao: EstadoMao;
+  /** `mundo.tempo` em que o tronco do alvo sumiu atrás de algo (mirando no tronco); `null` com o tronco à vista ou alvo novo. */
+  troncoEscondidoDesde: number | null;
   saidaFogo?: { alvo: Vec3; ate: number } | null;
   disparando?: boolean;
   refazerEm?: number;
@@ -287,8 +289,11 @@ export interface Dificuldade {
   chanceCabeca: number;
   alturaTronco?: number;
   toleranciaTiro: number;
-  /** Tronco escondido e a cabeça à vista: mira na cabeça (só o difícil). Senão segue no tronco e não atira. */
-  trocaParaCabeca: boolean;
+  /**
+   * Tronco escondido e a cabeça à vista: depois de tantos s sem ver o tronco, mira na cabeça (`0` = na hora, o
+   * difícil). Antes disso segue no tronco e não atira.
+   */
+  trocaParaCabecaApos: number;
   mao: PerfilMao;
 }
 export type NomeDificuldade = 'facil' | 'medio' | 'dificil';
