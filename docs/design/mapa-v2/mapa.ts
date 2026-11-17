@@ -148,7 +148,7 @@ const arestasA: [number, number][] = [
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════
 
 // Tons só da decoração.
-const PORTA = 0x3b7c8c; // azul-petróleo das portas (longe do azul do time)
+const PORTA = 0x4a97a8; // azul-petróleo das portas (longe do azul do time)
 const PANO_CRU = 0xeee3c8;
 const PANO_TERRA = 0xb5533c;
 const PANO_VERDE = 0x5d8a5e;
@@ -226,7 +226,7 @@ function molduras(c: Caixa): Caixa[] {
 
 /** Aro escuro no topo de cada caixote de madeira (vira caixote, não cubo liso). */
 function aros(c: Caixa): Caixa[] {
-  if (c.cor !== MADEIRA && c.cor !== MADEIRA_ESC) return [];
+  if ((c.cor !== MADEIRA && c.cor !== MADEIRA_ESC) || c.min.y > 0) return [];
   return [casca(c, escurecer(Number(c.cor), 0.68), c.max.y - 0.16, c.max.y, 0.03)];
 }
 
@@ -238,7 +238,7 @@ function sombra(c: Caixa): Caixa[] {
   const x1 = Math.min(40, c.min.y === 0 ? c.min.x : c.max.x - K_SOMBRA * c.min.y);
   const z0 = Math.max(0, c.min.z);
   const z1 = Math.min(30, c.max.z);
-  if (x1 - x0 < 0.25 || z1 - z0 < 0.25) return [];
+  if ((x1 - x0) * (z1 - z0) < 1.5) return []; // sombra miúda não paga a caixa
   return [caixa(x0, z0, x1, z1, P_SOMBRA, SOMBRA)];
 }
 
@@ -329,13 +329,6 @@ function letra(ch: 'A' | 'B', eixo: Eixo, pos: number, dir: Dir, uc: number, y0:
     painel(eixo, pos, dir, uc + r * (s0 - 0.5) * larg, uc + r * (s1 - 0.5) * larg, y0 + t0 * alt, y0 + t1 * alt, cor, esp));
 }
 
-/** Seta pintada (haste e ponta em dois degraus); `sentido` +1 aponta para a direita de quem olha. */
-function seta(eixo: Eixo, pos: number, dir: Dir, uc: number, yc: number, comp: number, sentido: number, cor: number, esp = 0.05): Caixa[] {
-  const r = direita(eixo, dir) * sentido;
-  const p = (s0: number, s1: number, meia: number): Caixa => painel(eixo, pos, dir, uc + r * s0 * comp, uc + r * s1 * comp, yc - meia, yc + meia, cor, esp);
-  return [p(-0.5, 0.15, 0.1), p(0.15, 0.34, 0.3), p(0.34, 0.5, 0.14)];
-}
-
 /** Placa alta com a letra do site nas duas faces, em cima da verga de um arco (tudo acima de 3,9 m). */
 function placaDoSite(ch: 'A' | 'B', x0: number, x1: number, corPlaca: number): Caixa[] {
   const xm = (x0 + x1) / 2;
@@ -355,20 +348,14 @@ function palmeira(x: number, z: number, h: number): Caixa[] {
     cubo(x, z, 0.45, 0.45, h, 0x8a6b45),
     cubo(x, z, 3.4, 0.7, 0.3, PALMA, h),
     cubo(x, z, 0.7, 3.4, 0.3, escurecer(PALMA, 0.85), h - 0.05),
-    cubo(x, z, 1.5, 1.5, 0.5, PALMA, h + 0.25),
   ];
 }
 
 // Fachada: transforma um trecho do muro externo numa casa (reboco sobre a base de pedra, andar de cima atrás
 // do muro e janelas). `andar` é a altura acima do muro; 0 deixa só o muro, com o horizonte aparecendo.
 interface Fachada { u0: number; u1: number; cor: number; andar?: number; jan?: number; venez?: number[]; corVenez?: number }
-function fachada(eixo: Eixo, pos: number, dir: Dir, f: Fachada, rnd: () => number): Caixa[] {
+function fachada(eixo: Eixo, pos: number, dir: Dir, f: Fachada): Caixa[] {
   const r: Caixa[] = [painel(eixo, pos, dir, f.u0, f.u1, 0.45, 4, f.cor, 0.04)];
-  // gesso caído: uma mancha de tijolo ou de reboco velho por trecho
-  const lm = 0.9 + rnd() * 1.4;
-  const um = f.u0 + 0.6 + rnd() * Math.max(0.1, f.u1 - f.u0 - lm - 1.2);
-  const ym = 0.5 + rnd() * 1.6;
-  r.push(painel(eixo, pos, dir, um, um + lm, ym, ym + 0.5 + rnd() * 0.9, rnd() < 0.5 ? TIJOLO : escurecer(f.cor, 0.86), 0.055));
   for (const u of f.venez ?? []) r.push(...veneziana(eixo, pos, dir, u, f.corVenez ?? PORTA, 1.65, 1.1, 1.3, 0.04));
   if (f.andar) {
     const fora = pos - dir * 8;
@@ -396,7 +383,7 @@ function manchas(paredes: Caixa[], rnd: () => number): Caixa[] {
     const tons = c.cor === ADOBE ? [GESSO, TIJOLO, escurecer(ADOBE, 0.85)] : [ADOBE, clarear(AREIA, 0.35), TIJOLO];
     for (const dir of [1, -1] as Dir[]) {
       const pos = aoLongoDeX ? (dir > 0 ? c.max.z : c.min.z) : (dir > 0 ? c.max.x : c.min.x);
-      for (let u = u0 + 0.8; u < u1 - 2.2; u += 4.2) {
+      for (let u = u0 + 0.8; u < u1 - 2.2; u += 6.5) {
         const l = 0.8 + rnd() * 1.5;
         const y = 0.5 + rnd() * 1.9;
         const uu = u + rnd() * 1.6;
@@ -461,28 +448,23 @@ const comum: Caixa[] = [
   painel('x', 1.6, -1, 7.14, 7.86, 0, 3.1, MADEIRA_ESC, 0.1),
   caixa(-1.8, 7.1, 1.8, 7.9, 0.4, MADEIRA_ESC, 3.1),
   ...lampada(0, 7.5, 3.1),
-  // túnel: forro escuro (luz ambiente por cor), três arcos de pedra, duas lâmpadas com poça de luz no piso
+  // túnel: forro escuro (luz ambiente por cor), dois arcos de pedra, duas lâmpadas com poça de luz no piso
   painel('x', 25.5, 1, 4, 9, 0.45, 3, TUNEL, 0.03),
   painel('x', 25.5, 1, 12, 16, 0.45, 3, TUNEL, 0.03),
   painel('x', 31, -1, 4, 14, 0.45, 3, TUNEL, 0.03),
   caixa(26, 4, 31, 16, 0.03, escurecer(TUNEL, 0.8), 2.97),
-  ...[4.3, 8.4, 13.2].flatMap((z) => [
+  ...[4.3, 13.2].flatMap((z) => [
     painel('x', 25.5, 1, z, z + 0.5, 0, 2.72, PEDRA, 0.12),
     painel('x', 31, -1, z, z + 0.5, 0, 2.72, PEDRA, 0.12),
     caixa(25.5, z, 31, z + 0.5, 0.28, PEDRA, 2.72),
   ]),
   ...lampada(28.5, 6.4, 2.97), cubo(28.5, 6.4, 2.6, 2.6, P_TINTA, 0xc9b27c),
   ...lampada(28.5, 11, 2.97), cubo(28.5, 11, 2.6, 2.6, P_TINTA, 0xc9b27c),
+  // parede do túnel que dá para o site B: reboco de areia sobre a pedra (o lado do site lê claro, o túnel escuro)
+  painel('x', 25, -1, 4, 9, 0.45, 4, AREIA, 0.04), painel('x', 25, -1, 12, 21, 0.45, 4, AREIA, 0.04),
   // janela do B: moldura de madeira do lado do site e peitoril
   painel('x', 25, -1, 8.8, 12.2, 2.95, 3.2, MADEIRA_ESC, 0.1),
-  painel('x', 25, -1, 8.8, 9, 1.3, 2.95, MADEIRA_ESC, 0.08),
-  painel('x', 25, -1, 12, 12.2, 1.3, 2.95, MADEIRA_ESC, 0.08),
   painel('x', 25, -1, 8.8, 12.2, 1.2, 1.32, MADEIRA, 0.12),
-  // arcos dos sites: aduela clara nos pilares
-  painel('x', -31, 1, 1.2, 2.4, 2.5, 2.9, clarear(PEDRA, 0.25), 0.06),
-  painel('x', 27.2, 1, 1.2, 2.4, 2.5, 2.9, clarear(PEDRA, 0.25), 0.06),
-  painel('x', -32.2, -1, 1.2, 2.4, 2.5, 2.9, clarear(PEDRA, 0.25), 0.06),
-  painel('x', 26, -1, 1.2, 2.4, 2.5, 2.9, clarear(PEDRA, 0.25), 0.06),
 ];
 
 // ── Lado A (z > 0): acampamento e mercado, panos terracota e amarelo ────────────────────────────────
@@ -492,30 +474,29 @@ const toldosA: Caixa[] = [
   ...toldo('z', 30, -1, -29, -23, 3, 1.7, 2.95, PANO_AMARELO, PANO_TERRA), // banca da lateral
 ];
 const fachadasA: Caixa[] = (() => {
-  const rnd = semente(11);
   const norte: Fachada[] = [
     { u0: -40, u1: -30, cor: ADOBE, andar: 3.2, jan: 2, venez: [-33.5] },
     { u0: -30, u1: -22, cor: GESSO },
     { u0: -22, u1: -12, cor: AREIA, andar: 5.6, jan: 2 },
-    { u0: -12, u1: 12, cor: GESSO, andar: 2.7, jan: 4 },
+    { u0: -12, u1: 12, cor: GESSO, andar: 2.7, jan: 3 },
     { u0: 12, u1: 22, cor: ADOBE, andar: 4.4, jan: 2, venez: [16.5], corVenez: PANO_VERDE },
     { u0: 22, u1: 31, cor: AREIA },
-    { u0: 31, u1: 40, cor: GESSO, andar: 3, jan: 2 },
+    { u0: 31, u1: 40, cor: GESSO, andar: 3, jan: 1 },
   ];
   const oeste: Fachada[] = [
-    { u0: 0, u1: 8, cor: AREIA, andar: 2.8, jan: 2 },
+    { u0: 0, u1: 8, cor: AREIA, andar: 2.8, jan: 1 },
     { u0: 8, u1: 17, cor: ADOBE },
     { u0: 17, u1: 30, cor: GESSO, andar: 4, jan: 2, venez: [21.5, 26], corVenez: PANO_TERRA },
   ];
   const leste: Fachada[] = [
     { u0: 0, u1: 13, cor: AREIA, andar: 3.5, jan: 2 },
     { u0: 13, u1: 22, cor: ROSA },
-    { u0: 22, u1: 30, cor: ADOBE, andar: 5, jan: 2 },
+    { u0: 22, u1: 30, cor: ADOBE, andar: 5, jan: 1 },
   ];
   return [
-    ...norte.flatMap((f) => fachada('z', 30, -1, f, rnd)),
-    ...oeste.flatMap((f) => fachada('x', -40, 1, f, rnd)),
-    ...leste.flatMap((f) => fachada('x', 40, -1, f, rnd)),
+    ...norte.flatMap((f) => fachada('z', 30, -1, f)),
+    ...oeste.flatMap((f) => fachada('x', -40, 1, f)),
+    ...leste.flatMap((f) => fachada('x', 40, -1, f)),
   ];
 })();
 
@@ -523,24 +504,23 @@ const decoA: Caixa[] = [
   ...comum,
   ...fachadasA,
   ...manchas(ladoA, semente(3)),
-  ...lajes(9, semente(5)),
+  ...lajes(5, semente(5)),
   ...[...ladoA, ...toldosA.slice(0, 6)].flatMap(sombra),
   caixa(37, 0, 40, 30, P_SOMBRA, SOMBRA), // sombra do muro leste
   ...toldosA,
 
   // Base: toldo de pano, sacos de areia, mesa com mapa, barris, munição, mastro (o pano da bandeira é do render)
-  ...sacos(-6.3, 19.5, 19.95, 5),
+  ...sacos(-6.3, 19.5, 19.95, 4),
   caixa(-11.5, 23.2, -10.7, 25, 0.08, MADEIRA, 0.82),
-  caixa(-11.45, 23.3, -10.8, 23.42, 0.82, MADEIRA_ESC),
-  caixa(-11.45, 24.78, -10.8, 24.9, 0.82, MADEIRA_ESC),
+  caixa(-11.45, 23.3, -10.8, 24.9, 0.82, MADEIRA_ESC),
   caixa(-11.35, 23.6, -10.85, 24.4, 0.02, PANO_CRU, 0.9),
-  ...barril(11.0, 29.45), ...barril(10.25, 29.5, 0x4a6a7a), ...barril(11.05, 28.7, PANO_TERRA),
+  ...barril(11.0, 29.45), ...barril(10.25, 29.5, 0x4a6a7a),
   caixa(-7.85, 27.2, -7.3, 27.55, 0.22, OLIVA, 1.2),
   caixa(7.2, 27.4, 7.8, 27.8, 0.22, OLIVA, 1.2),
   caixa(-8.78, 19.17, -8.62, 19.33, 3.4, MADEIRA_ESC, 4.3),
   painel('z', 19, -1, -9, 9, 1.0, 1.22, PANO_TERRA, 0.03),
   ...veneziana('z', 19, -1, -5.5, PORTA), ...veneziana('z', 19, -1, 5.5, PORTA),
-  ...vigas('z', 19, -1, [-8, -5.5, -3, 3, 5.5, 8]),
+  ...vigas('z', 19, -1, [-8, -3, 3, 8]),
   ...veneziana('x', -12, -1, 25.5, PANO_TERRA), ...vigas('x', -12, -1, [22.5, 28.5]),
   ...veneziana('x', 12, 1, 24, PANO_TERRA), ...lampiao('x', 12, 1, 27.5),
 
@@ -551,10 +531,9 @@ const decoA: Caixa[] = [
   ...veneziana('x', -33, -1, 6, PORTA), ...veneziana('x', -33, -1, 12, PORTA),
   painel('x', -33, -1, 8.6, 9.4, 1.3, 3.2, PANO_TERRA, 0.05), painel('x', -33, -1, 8.5, 9.5, 3.2, 3.3, MADEIRA_ESC, 0.1),
   caixa(-40, 13.5, -39.1, 14.4, 0.5, TIJOLO), caixa(-39.9, 13.55, -39.4, 14.05, 0.35, ADOBE, 0.5),
-  caixa(-39.1, 13.5, -38.65, 13.95, 0.25, ADOBE), caixa(-40, 14.4, -39.5, 15, 0.3, TIJOLO),
+  caixa(-40, 14.4, -39.5, 15, 0.3, TIJOLO),
   painel('x', -40, 1, 13.6, 16.3, 0.45, 1.5, TIJOLO, 0.07), painel('x', -40, 1, 14.2, 16, 1.5, 2.4, TIJOLO, 0.07),
-  painel('x', -40, 1, 14.9, 15.7, 2.4, 3, TIJOLO, 0.07),
-  caixa(-42, 8, -39.96, 11, 1.7, escurecer(ADOBE, 0.9), 4), caixa(-42, 11, -39.96, 13, 0.8, escurecer(ADOBE, 0.9), 4),
+  caixa(-42, 8, -39.96, 11.5, 1.7, escurecer(ADOBE, 0.9), 4),
   caixa(-42, 14.6, -39.96, 17, 2.6, escurecer(ADOBE, 0.9), 4),
   ...barril(-39.65, 9), ...barril(-39.65, 9.75, 0x4a6a7a),
   ...cintas(CONTAINER_LONGA, AZUL, 'x+'),
@@ -574,30 +553,27 @@ const decoA: Caixa[] = [
   // Meio: portas azuis abertas contra a parede, varal de bandeirinhas, lixeira, caixote em cima do xbox, vasos
   ...porta('z', 7.8, 1, 1.7, 3.2, 3), ...porta('z', 7.8, 1, -3.2, -1.7, 3),
   caixa(-4.52, 7.8, -4.48, 19, 0.03, ESCURO, 3.8),
-  ...[9, 10.4, 11.8, 13.2, 14.6, 16, 17.4].map((z, i) => caixa(-4.52, z, -4.48, z + 0.4, 0.38, [PANO_TERRA, PANO_CRU, PANO_AMARELO, PANO_VERDE][i % 4]!, 3.42)),
+  ...[9.4, 11.4, 13.4, 15.4, 17.4].map((z, i) => caixa(-4.52, z, -4.48, z + 0.4, 0.38, [PANO_TERRA, PANO_CRU, PANO_AMARELO, PANO_VERDE][i % 4]!, 3.42)),
   caixa(4.2, 7.8, 5.9, 8.65, 1.05, 0x3f5d49), caixa(4.15, 7.8, 5.95, 8.7, 0.1, 0x55785f, 1.05),
   ...cintas(XBOX, VERDE, 'x+').slice(0, 2), ...caixote(0.4, 15.1, 1, 0.75, MADEIRA, 2),
   casca(achar(-10, 4), escurecer(AREIA, 0.75), 1.85, 2, 0.08), casca(achar(8, 4), escurecer(AREIA, 0.75), 1.85, 2, 0.08),
   cubo(-9.4, 4.6, 0.5, 0.5, 0.35, TIJOLO, 2.02), cubo(-9.4, 4.6, 0.7, 0.7, 0.45, PALMA, 2.37),
-  cubo(-8.6, 5.4, 0.4, 0.4, 0.3, TIJOLO, 2.02), cubo(-8.6, 5.4, 0.5, 0.5, 0.3, escurecer(PALMA, 0.85), 2.32),
 
   // Túnel: cano enferrujado com descida e ralo no piso
   painel('x', 31, -1, 4, 14, 2.3, 2.42, FERRUGEM, 0.1), painel('x', 31, -1, 13.6, 13.72, 0, 2.3, FERRUGEM, 0.1),
-  painel('x', 31, -1, 6.9, 7.05, 2.26, 2.46, ESCURO, 0.12), painel('x', 31, -1, 10.4, 10.55, 2.26, 2.46, ESCURO, 0.12),
   caixa(29.6, 14.4, 30.5, 15.2, P_TINTA, ESCURO), caixa(29.6, 14.62, 30.5, 14.7, 0.045, FERRO), caixa(29.6, 14.9, 30.5, 14.98, 0.045, FERRO),
 
   // Site B: container verde com cintas, caixote em cima, paletes e munição contra a parede do túnel
   ...cintas(CONTAINER_B, VERDE, 'x-'), ...caixote(21.6, 5.7, 1, 0.6, MADEIRA, 2.4),
   ...paletes(24.05, 13.6, 25, 14.9, 3),
   caixa(24.4, 15.3, 25, 16.3, 0.4, OLIVA), caixa(24.45, 15.4, 24.95, 16.1, 0.34, escurecer(OLIVA, 0.85), 0.4),
-  painel('x', 25, -1, 4, 21, 3.4, 3.65, AZUL_B, 0.03),
+  painel('x', 25, -1, 4, 21, 3.4, 3.65, AZUL_B, 0.07),
 
   // Laterais: banca de frutas na parede norte, tralha no canto, lampiões
   ...caixote(-28, 29.5, 0.9, 0.6), cubo(-28, 29.5, 0.7, 0.7, 0.14, 0xd9772b, 0.6),
-  ...caixote(-26.8, 29.5, 0.9, 0.6), cubo(-26.8, 29.5, 0.7, 0.7, 0.14, 0x7fa650, 0.6),
   ...caixote(-25, 29.55, 0.8, 0.9), cubo(-25, 29.55, 0.6, 0.6, 0.14, 0xb5352f, 0.9),
-  ...barril(39.6, 29.6), ...barril(38.9, 29.6, OLIVA), ...paletes(38.9, 27.9, 40, 28.9, 2),
-  ...lampiao('z', 30, -1, -17), ...lampiao('z', 30, -1, 26.5), ...lampiao('x', 40, -1, 17.5),
+  ...barril(39.6, 29.6), ...paletes(38.9, 27.9, 40, 28.9, 1),
+  ...lampiao('z', 30, -1, -17), ...lampiao('z', 30, -1, 26.5),
   casca(achar(-30, 24), escurecer(AREIA, 0.75), 1.88, 2, 0.06), casca(achar(20, 24), escurecer(AREIA, 0.75), 1.08, 1.2, 0.06),
 ];
 
@@ -607,12 +583,11 @@ const toldosB: Caixa[] = [
   ...toldo('x', 25, -1, 16.5, 20, 3, 1.6, 2.95, PANO_VERDE, PANO_CRU), // banca do site B
 ];
 const fachadasB: Caixa[] = (() => {
-  const rnd = semente(29);
   const sul: Fachada[] = [
-    { u0: -40, u1: -33, cor: GESSO, andar: 4.6, jan: 2 },
+    { u0: -40, u1: -33, cor: GESSO, andar: 4.6, jan: 1 },
     { u0: -33, u1: -24, cor: OCRE, andar: 2.6, jan: 2, venez: [-28.5], corVenez: PANO_VERDE },
     { u0: -24, u1: -12, cor: ADOBE },
-    { u0: -12, u1: 12, cor: AREIA, andar: 4, jan: 5 },
+    { u0: -12, u1: 12, cor: AREIA, andar: 4, jan: 3 },
     { u0: 12, u1: 20, cor: GESSO },
     { u0: 20, u1: 30, cor: ROSA, andar: 5.6, jan: 2 },
     { u0: 30, u1: 40, cor: ADOBE, andar: 2.8, jan: 2, venez: [35], corVenez: PORTA },
@@ -620,17 +595,17 @@ const fachadasB: Caixa[] = (() => {
   const oeste: Fachada[] = [
     { u0: 0, u1: 10, cor: OCRE },
     { u0: 10, u1: 20, cor: GESSO, andar: 5, jan: 2, venez: [13], corVenez: PANO_VERDE },
-    { u0: 20, u1: 30, cor: ADOBE, andar: 3, jan: 2 },
+    { u0: 20, u1: 30, cor: ADOBE, andar: 3, jan: 1 },
   ];
   const leste: Fachada[] = [
     { u0: 0, u1: 9, cor: ADOBE },
     { u0: 9, u1: 20, cor: AREIA, andar: 4.2, jan: 2 },
-    { u0: 20, u1: 30, cor: GESSO, andar: 2.6, jan: 2 },
+    { u0: 20, u1: 30, cor: GESSO, andar: 2.6, jan: 1 },
   ];
   return [
-    ...sul.flatMap((f) => fachada('z', 30, -1, f, rnd)),
-    ...oeste.flatMap((f) => fachada('x', -40, 1, f, rnd)),
-    ...leste.flatMap((f) => fachada('x', 40, -1, f, rnd)),
+    ...sul.flatMap((f) => fachada('z', 30, -1, f)),
+    ...oeste.flatMap((f) => fachada('x', -40, 1, f)),
+    ...leste.flatMap((f) => fachada('x', 40, -1, f)),
   ];
 })();
 
@@ -638,14 +613,14 @@ const decoB: Caixa[] = [
   ...comum,
   ...fachadasB,
   ...manchas(ladoA, semente(71)),
-  ...lajes(9, semente(13)),
+  ...lajes(5, semente(13)),
   ...[...ladoA, ...toldosB.slice(0, 4)].flatMap(sombra),
   caixa(37, 0, 40, 30, P_SOMBRA, SOMBRA),
   ...toldosB,
 
   // Base: toldo verde fora de centro, paletes, barris, antena de rádio, porta fechada na fachada
   ...paletes(9.8, 28.3, 11.4, 29.8, 3),
-  ...barril(11.1, 22.5, 0x4a6a7a), ...barril(11.1, 23.25, 0x4a6a7a), ...barril(11.1, 24.2, OLIVA),
+  ...barril(11.1, 22.5, 0x4a6a7a), ...barril(11.1, 23.25, OLIVA),
   caixa(3.92, 30.17, 4.08, 30.33, 4.2, FERRO, 4.3), caixa(3.4, 30.2, 4.6, 30.3, 0.08, FERRO, 7.6), caixa(3.6, 30.2, 4.4, 30.3, 0.08, FERRO, 8.1),
   caixa(7.15, 27.2, 7.85, 27.7, 0.3, FERRO, 1.2), caixa(7.25, 27.3, 7.4, 27.45, 0.5, ESCURO, 1.5),
   caixa(8.62, 19.17, 8.78, 19.33, 3.4, MADEIRA_ESC, 4.3),
@@ -655,7 +630,7 @@ const decoB: Caixa[] = [
   ...veneziana('x', 12, 1, 26, PANO_VERDE), ...vigas('x', 12, 1, [22.5, 24.5]),
   ...lampiao('x', -12, -1, 24),
 
-  // Longa: uma folha só no portão (a outra virou tapume), varais de roupa, banca de frutas, container ferrugem
+  // Longa: uma folha só no portão (a outra virou tapume), varal de roupa, banca de frutas, container ferrugem
   ...porta('z', 17.4, 1, -39.95, -37.7, 2.68),
   painel('x', -33, -1, 14.6, 16.4, 0.9, 1.15, MADEIRA, 0.08), painel('x', -33, -1, 14.8, 16.5, 1.7, 1.95, MADEIRA, 0.08),
   ...vigas('x', -33, -1, [5, 9, 13]),
@@ -663,8 +638,6 @@ const decoB: Caixa[] = [
   painel('x', -33, -1, 5.6, 6.5, 1.4, 2.5, PANO_CRU, 0.03), painel('x', -33, -1, 6.7, 7.4, 1.6, 2.4, 0xc86b4a, 0.03),
   caixa(-40, 9.98, -33, 10.02, 0.03, ESCURO, 3.55),
   ...[-39, -37.7, -36.3, -35.1, -34].map((x, i) => caixa(x, 9.98, x + [0.8, 0.6, 0.9, 0.5, 0.7][i]!, 10.02, [0.75, 0.6, 0.8, 0.55, 0.7][i]!, [PANO_CRU, 0x6d8fb0, PANO_TERRA, PANO_CRU, PANO_AMARELO][i]!, 3.55 - [0.75, 0.6, 0.8, 0.55, 0.7][i]!)),
-  caixa(-40, 4.98, -33, 5.02, 0.03, ESCURO, 3.4),
-  ...[-38.6, -37.2, -35.6].map((x, i) => caixa(x, 4.98, x + 0.8, 5.02, 0.7, [PANO_VERDE, PANO_CRU, 0xc86b4a][i]!, 2.7)),
   ...caixote(-39.5, 8.7, 0.9, 0.6), cubo(-39.5, 8.7, 0.7, 0.7, 0.14, 0x7fa650, 0.6),
   ...caixote(-39.5, 9.7, 0.9, 0.6), cubo(-39.5, 9.7, 0.7, 0.7, 0.14, 0xd9772b, 0.6),
   casca(CONTAINER_LONGA, FERRUGEM), ...cintas(CONTAINER_LONGA, FERRUGEM, 'x+'),
@@ -675,7 +648,6 @@ const decoB: Caixa[] = [
   painel('z', 6.4, 1, -27, -25, 1.12, 1.5, ESCURO, 0.03), painel('x', -27.2, -1, 5.15, 6.25, 1.12, 1.5, ESCURO, 0.03),
   caixa(-27.9, 5, -27.8, 6.4, 0.75, 0x7d5a40, 1),
   caixa(-32.5, 9, -31.8, 9.7, 0.24, ESCURO), caixa(-32.45, 9.05, -31.75, 9.75, 0.24, 0x3a3632, 0.24), caixa(-32.5, 9, -31.8, 9.7, 0.24, ESCURO, 0.48),
-  caixa(-32.5, 10, -31.8, 10.7, 0.24, 0x3a3632),
 
   // Meio: uma folha aberta para o centro e tapume na outra, fio de lâmpadas, lona no xbox, cartazes
   ...porta('z', 7.2, -1, 1.7, 3.2, 3),
@@ -690,40 +662,36 @@ const decoB: Caixa[] = [
   // Túnel: fio, caixa de luz e grade de ventilação
   painel('x', 25.5, 1, 4, 9, 2.45, 2.5, ESCURO, 0.06), painel('x', 25.5, 1, 5.6, 6.1, 1.5, 2.2, FERRO, 0.1),
   painel('x', 31, -1, 9.4, 10.6, 1.2, 1.9, ESCURO, 0.05),
-  ...[9.6, 9.9, 10.2].map((z) => painel('x', 31, -1, z, z + 0.08, 1.2, 1.9, FERRO_CLARO, 0.08)),
+  ...[9.75, 10.15].map((z) => painel('x', 31, -1, z, z + 0.08, 1.2, 1.9, FERRO_CLARO, 0.08)),
 
   // Site B (metade sul): container branco com faixa vermelha, lona na pilha, banca verde com paletes em pé e tambores
   casca(CONTAINER_B, 0xcfc9b8), ...cintas(CONTAINER_B, 0xcfc9b8, 'x-'), casca(CONTAINER_B, PANO_TERRA, 1.1, 1.4, 0.03),
   casca(achar(15, 4.8), 0x7b8a6a, 1.5, 2, 0.04),
   painel('x', 25, -1, 16.7, 18, 0, 1.2, 0xb98f5a, 0.12), painel('x', 25, -1, 18.2, 19.6, 0, 1.2, 0xb98f5a, 0.12),
   ...barril(24.65, 13.4, 0x4a6a7a), ...barril(24.65, 14.15, PANO_TERRA),
-  painel('x', 25, -1, 4, 21, 3.4, 3.65, AZUL_B, 0.03),
+  painel('x', 25, -1, 4, 21, 3.4, 3.65, AZUL_B, 0.07),
 
   // Laterais: cartaz na parede, pneus e tambores no canto, sacos de areia, lampiões
   painel('z', 30, -1, 13.5, 17.5, 1.4, 3.4, 0x33526b, 0.07), painel('z', 30, -1, 13.8, 17.2, 2.5, 3.1, PANO_CRU, 0.09), painel('z', 30, -1, 13.8, 15.4, 1.7, 2.2, PANO_AMARELO, 0.09),
   caixa(-40, 29.3, -39.3, 30, 0.24, ESCURO), caixa(-39.95, 29.3, -39.25, 30, 0.24, 0x3a3632, 0.24), caixa(-39.2, 29.3, -38.5, 30, 0.24, ESCURO),
   ...barril(-39.6, 28.6, OLIVA),
-  ...sacos(36.4, 29.5, 30, 4),
-  ...lampiao('z', 30, -1, -27), ...lampiao('z', 30, -1, 16), ...lampiao('x', -40, 1, 24),
+  ...sacos(37.2, 29.5, 30, 3),
+  ...lampiao('z', 30, -1, -27), ...lampiao('x', -40, 1, 24),
   casca(achar(-30, 24), escurecer(AREIA, 0.75), 1.88, 2, 0.06), casca(achar(20, 24), escurecer(AREIA, 0.75), 1.08, 1.2, 0.06),
 ];
 
 // ── Centro e horizonte (coordenadas reais, sem espelho) ─────────────────────────────────────────────
-function cantoneiras(s: { min: PontoXZ; max: PontoXZ }, cor: number): Caixa[] {
-  const r: Caixa[] = [];
-  const L = 1.6;
-  const e = 0.22;
-  for (const [x, dx] of [[s.min.x, 1], [s.max.x, -1]] as const) {
-    for (const [z, dz] of [[s.min.z, 1], [s.max.z, -1]] as const) {
-      r.push(caixa(Math.min(x, x + dx * L), Math.min(z, z + dz * e), Math.max(x, x + dx * L), Math.max(z, z + dz * e), P_TINTA, cor));
-      r.push(caixa(Math.min(x, x + dx * e), Math.min(z, z + dz * L), Math.max(x, x + dx * e), Math.max(z, z + dz * L), P_TINTA, cor));
-    }
-  }
-  return r;
+/** Moldura pintada em volta do retângulo de plantar (4 barras). */
+function cantoneiras(r: { min: PontoXZ; max: PontoXZ }, cor: number): Caixa[] {
+  const e = 0.2;
+  return [
+    caixa(r.min.x, r.min.z, r.max.x, r.min.z + e, P_TINTA, cor), caixa(r.min.x, r.max.z - e, r.max.x, r.max.z, P_TINTA, cor),
+    caixa(r.min.x, r.min.z, r.min.x + e, r.max.z, P_TINTA, cor), caixa(r.max.x - e, r.min.z, r.max.x, r.max.z, P_TINTA, cor),
+  ];
 }
 
 const decoCentro: Caixa[] = [
-  // sites: piso claro e cantoneiras pintadas (a letra no chão continua sendo a marca do render)
+  // sites: piso claro e moldura pintada (a letra no chão continua sendo a marca do render)
   caixa(-30, -4, -19, 4, P_SITE, 0xe2d29c),
   caixa(14, -4, 25, 4, P_SITE, 0xe2d29c),
   ...cantoneiras(SITES.A, AMARELO_A),
@@ -734,18 +702,15 @@ const decoCentro: Caixa[] = [
   ...lampada(-31.6, 0, 2.9), ...lampada(26.6, 0, 2.9),
   // letrões pintados nas paredes que dão para os sites
   ...letra('A', 'x', -32.5, 1, 14.2, 0.9, 2.3, 2.6, AMARELO_A),
-  ...letra('A', 'x', -32.5, 1, -5.6, 1.3, 1.5, 1.7, AMARELO_A), painel('x', -32.5, 1, -17, -7, 3.4, 3.65, AMARELO_A, 0.03),
+  painel('x', -32.5, 1, -17, -7, 3.4, 3.65, AMARELO_A, 0.03),
   painel('x', -32.5, 1, 3, 12.6, 3.4, 3.65, AMARELO_A, 0.03),
-  ...letra('B', 'x', 25, -1, 6.4, 1.1, 2.1, 2.5, AZUL_B),
-  ...letra('B', 'x', 25, -1, -14.6, 1.3, 1.5, 1.8, AZUL_B),
-  // pichação de caminho nas portas do meio: A para o lado do site A, B para o lado do site B
-  ...letra('A', 'z', 7.8, 1, -5.9, 1.5, 0.9, 1.2, AMARELO_A), ...seta('z', 7.8, 1, -4.5, 2.1, 1.1, 1, AMARELO_A),
+  ...letra('B', 'x', 25, -1, 17.4, 0.8, 2.1, 2.5, AZUL_B, 0.09),
+  ...letra('B', 'x', 25, -1, -14.3, 1.2, 1.6, 1.9, AZUL_B, 0.09),
+  // pichação de caminho nas portas do meio: a letra fica no pano de parede do lado do seu site
+  ...letra('A', 'z', 7.8, 1, -5.9, 1.5, 0.9, 1.2, AMARELO_A),
   ...letra('B', 'z', 7.8, 1, 6.4, 2.75, 0.55, 0.75, AZUL_B),
-  ...letra('A', 'z', -7.8, -1, -5.6, 1.5, 0.9, 1.2, AMARELO_A), ...seta('z', -7.8, -1, -4.2, 2.1, 1.1, 1, AMARELO_A),
-  ...letra('B', 'z', -7.8, -1, 5.9, 1.5, 0.9, 1.2, AZUL_B), ...seta('z', -7.8, -1, 4.5, 2.1, 1.1, -1, AZUL_B),
-  // Longa: A com seta para o arco, de quem vem do portão
-  ...letra('A', 'x', -40, 1, 3.6, 1.4, 1, 1.3, AMARELO_A), ...seta('x', -40, 1, 2, 2.05, 1.2, -1, AMARELO_A),
-  ...letra('A', 'x', -40, 1, -3.6, 1.4, 1, 1.3, AMARELO_A), ...seta('x', -40, 1, -2, 2.05, 1.2, 1, AMARELO_A),
+  ...letra('A', 'z', -7.8, -1, -5.6, 1.5, 0.9, 1.2, AMARELO_A),
+  ...letra('B', 'z', -7.8, -1, 5.9, 1.5, 0.9, 1.2, AZUL_B),
 ];
 
 const horizonte: Caixa[] = [

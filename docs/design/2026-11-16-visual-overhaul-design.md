@@ -37,9 +37,23 @@ Validação feita num scratchpad com o repo copiado [Certo]:
 
 Entregues pelo Fable 5.2 em `docs/design/personagens-armas-v2/` (modelos de armas em caixas com paleta, mãos e braços na primeira pessoa, receita do boneco com 5 variantes por time e rosto procedural, tabela de animações, folhas SVG/PNG). Texto de direção em `personagens-armas.md` ali dentro. Hitboxes de `fisica` ficam congeladas.
 
+Pontos fracos que o próprio agente apontou [Certo]: braços sem cotovelo, antebraço esquerdo na primeira pessoa ainda lê como "barra", e a pose só foi vista em SVG, não dentro do jogo. Sem mexer no render, as armas novas aparecem em só duas cores.
+
 ## Vida do mapa
 
-Entregue pelo Fable 5.2 em `docs/design/mapa-v2/` (`decoracao`, `atmosfera`, prévias 3D em `previa/`, `vida-do-mapa.md`). Só visual: nada disso entra na colisão.
+Entregue pelo Fable 5.2 em `docs/design/mapa-v2/` (`decoracao`, `atmosfera.ts/.md`, `vida-do-mapa.md`, prévias 3D reais em `previa/`: vista de cima e cenas à altura do olho). Só visual: nada disso entra na colisão.
+
+Conferido por mim depois da entrega [Certo]: `caixas` e waypoints idênticos à versão validada; `vitest packages/sim` com 575 de 576 (só o teto de caixas); `bs-presos` com 0 bot preso em 4 seeds. A decoração tem 797 caixas e 21,7 mil vértices (limite 30 mil). A fachada de casas no muro, o horizonte (mesquita, minarete), as placas A/B altas e o túnel escuro estão na prévia.
+
+Fraco: praças atrás dos sites ainda lisas, prédios do horizonte simples, caixotes todos marrom-escuro. 32 adereços de chão ficam em cantos mortos e são atravessáveis.
+
+## Decisões abertas para o dono
+
+1. Céu e neblina: o drop-in manteve `0x87ceeb` e `[30, 90]` para o teste passar. O agente propõe `0xf0dfb8` e `[38, 150]` (areia quente), o que obriga a mudar `mapa.test.ts`.
+2. Luzes: com as intensidades atuais (0,9 e 0,8) o mapa fica marrom no three 0.169; proposta 2,1 e 2,5. [Provável]
+3. Aceitar 797 caixas de decoração ou cortar para ~700 (a ordem de corte está em `vida-do-mapa.md`).
+4. Container azul da Longa fica perto do azul do time; trocar a cor ou aceitar.
+5. Boneco: ajoelhar ao plantar exige o sim forçar `agachado`; capacete em todo CT ou só com colete; cotovelos (+2 draw calls por boneco); trocar a cabeça amarela por tons de pele; P90 com pente no topo.
 
 ## Como implementar depois (ordem, cada passo cabe numa sessão curta)
 
