@@ -25,9 +25,9 @@ export const ATMOSFERA = {
   /** `MAPA.neblina` novo (o teste de [30, 90] precisa mudar): abre a visada da Longa e só esfuma o horizonte. */
   neblina: { cor: 0xf0dfb8, perto: 38, longe: 150 },
   /** Sol de fim de tarde vindo de +x (as sombras de `decoracao` foram projetadas com esta direção: 0,75 m por metro). */
-  sol: { cor: 0xffe2b0, intensidade: 1.55, posicao: { x: 30, y: 40, z: 9 } },
+  sol: { cor: 0xffe2b0, intensidade: 2.5, posicao: { x: 30, y: 40, z: 9 } },
   /** Luz do céu por cima e rebatida da areia por baixo. */
-  hemisferio: { ceu: 0xcfe2f5, chao: 0xb89a66, intensidade: 1.05 },
+  hemisferio: { ceu: 0xdcebf7, chao: 0xd9c39a, intensidade: 2.1 },
   /** Poeira: caixinhas claras boiando perto da câmera (só no render; ver atmosfera.md). */
   poeira: {
     quantidade: 56, tamanho: 0.035, cor: 0xfff1cf, opacidade: 0.55,
