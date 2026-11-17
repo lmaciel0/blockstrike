@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<title>Block Strike — prévia do mapa v2</title>
+<style>
+  html, body { margin: 0; background: #111; overflow: hidden; font: 600 13px system-ui, sans-serif; }
+  canvas { display: block; }
+  .rotulo { position: absolute; transform: translate(-50%, -50%); color: #fff; background: rgba(20, 16, 10, .72);
+    padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+  #titulo { position: absolute; left: 12px; top: 10px; color: #fff; background: rgba(20, 16, 10, .72); padding: 4px 10px; border-radius: 4px; }
+</style>
+<script type="importmap">{ "imports": { "three": "/node_modules/three/build/three.module.js" } }</script>
+<canvas id="tela" width="1280" height="720"></canvas>
+<div id="rotulos"></div>
+<script type="module">
+// Prévia do mapa v2. Monta a cena com a MESMA lógica do render.ts (caixas + decoracao numa geometria só,
+// cor por vértice, Lambert) e acrescenta o que atmosfera.md propõe: domo de céu, luz, neblina, bandeiras e poeira.
+// Uso: preview.html?cena=cima|base|longa|meio|tunel  (dados.json vem de exportar.mjs)
+import * as THREE from 'three';
+
+const FACES = [
+  { n: [1, 0, 0], v: [[1, 0, 1], [1, 0, 0], [1, 1, 0], [1, 1, 1]] },
+  { n: [-1, 0, 0], v: [[0, 0, 0], [0, 0, 1], [0, 1, 1], [0, 1, 0]] },
+  { n: [0, 1, 0], v: [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]] },
+  { n: [0, -1, 0], v: [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]] },
+  { n: [0, 0, 1], v: [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]] },
+  { n: [0, 0, -1], v: [[1, 0, 0], [0, 0, 0], [0, 1, 0], [1, 1, 0]] },
+];
+function geometriaDoMapa(caixas) {
+  const pos = new Float32Array(caixas.length * 72), nor = new Float32Array(caixas.length * 72), cor = new Float32Array(caixas.length * 72);
+  const idx = new Uint32Array(caixas.length * 36);
+  const c = new THREE.Color();
+  caixas.forEach((caixa, i) => {
+    c.set(caixa.cor);
+    const { min, max } = caixa;
+    FACES.forEach((face, f) => {
+      const tom = face.n[1] > 0 ? 1 : face.n[1] < 0 ? 0.6 : face.n[0] !== 0 ? 0.85 : 0.75;
+      face.v.forEach((q, k) => {
+        const o = (i * 24 + f * 4 + k) * 3;
+        pos[o] = q[0] ? max.x : min.x; pos[o + 1] = q[1] ? max.y : min.y; pos[o + 2] = q[2] ? max.z : min.z;
+        nor.set(face.n, o);
+        cor[o] = c.r * tom; cor[o + 1] = c.g * tom; cor[o + 2] = c.b * tom;
+      });
+      const b = i * 24 + f * 4;
+      idx.set([b, b + 1, b + 2, b, b + 2, b + 3], i * 36 + f * 6);
+    });
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(cor, 3));
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
+  return g;
+}
+
+const { mapa, atmosfera: A } = await (await fetch('dados.json?' + Date.now())).json();
+const q = new URLSearchParams(location.search);
+const cena = q.get('cena') ?? 'base';
+const semDeco = q.has('semdeco');
+const canvas = document.getElementById('tela');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(1280, 720, false);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(A.neblina.cor);
+scene.fog = new THREE.Fog(A.neblina.cor, A.neblina.perto, A.neblina.longe);
+
+scene.add(new THREE.HemisphereLight(A.hemisferio.ceu, A.hemisferio.chao, A.hemisferio.intensidade));
+const sol = new THREE.DirectionalLight(A.sol.cor, A.sol.intensidade);
+sol.position.set(A.sol.posicao.x, A.sol.posicao.y, A.sol.posicao.z);
+scene.add(sol);
+
+const caixas = semDeco ? mapa.caixas : [...mapa.caixas, ...(mapa.decoracao ?? [])];
+scene.add(new THREE.Mesh(geometriaDoMapa(caixas), new THREE.MeshLambertMaterial({ vertexColors: true })));
+
+// Domo de céu: esfera virada para dentro, cor por vértice em três paradas, sem neblina.
+{
+  const g = new THREE.SphereGeometry(180, 24, 12);
+  const p = g.attributes.position, cores = new Float32Array(p.count * 3);
+  const z = new THREE.Color(A.ceu.zenite), m = new THREE.Color(A.ceu.meio), h = new THREE.Color(A.ceu.horizonte), c = new THREE.Color();
+  for (let i = 0; i < p.count; i++) {
+    const t = Math.max(0, p.getY(i) / 180); // 0 no horizonte, 1 no zênite
+    if (t < 0.18) c.lerpColors(h, m, t / 0.18); else c.lerpColors(m, z, Math.min(1, (t - 0.18) / 0.5));
+    cores.set([c.r, c.g, c.b], i * 3);
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(cores, 3));
+  const domo = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
+  domo.renderOrder = -1;
+  scene.add(domo);
+}
+
+// Bandeiras (pose congelada em t = 1,3 s) e poeira (posição congelada).
+if (!semDeco) {
+  const t = 1.3, B = A.balancoBandeira;
+  for (const b of A.bandeiras) {
+    let pai = new THREE.Group();
+    pai.position.set(b.pivo.x, b.pivo.y, b.pivo.z);
+    pai.rotation.y = Math.atan2(-b.dir.z, b.dir.x);
+    scene.add(pai);
+    for (let i = 0; i < b.segmentos; i++) {
+      const seg = new THREE.Group();
+      seg.position.x = i === 0 ? 0 : b.larg;
+      seg.rotation.y = B.amplitude * Math.sin(t * B.freq + b.fase - i * B.atraso);
+      const pano = new THREE.Mesh(new THREE.BoxGeometry(b.larg, b.alt, 0.02), new THREE.MeshLambertMaterial({ color: b.cor }));
+      pano.position.set(b.larg / 2, -b.alt / 2, 0);
+      seg.add(pano); pai.add(seg); pai = seg;
+    }
+  }
+}
+function poeira(camera) {
+  const P = A.poeira;
+  const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(P.tamanho, P.tamanho, P.tamanho),
+    new THREE.MeshBasicMaterial({ color: P.cor, transparent: true, opacity: P.opacidade, depthWrite: false, fog: false }), P.quantidade);
+  let s = 7; const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  const m = new THREE.Matrix4();
+  for (let i = 0; i < P.quantidade; i++) {
+    m.setPosition(camera.position.x + (r() - 0.5) * P.volume.x, 0.3 + r() * P.volume.y, camera.position.z + (r() - 0.5) * P.volume.z);
+    inst.setMatrixAt(i, m);
+  }
+  scene.add(inst);
+}
+
+const CENAS = {
+  base: { nome: 'Saindo da base (lado A)', de: [-9.8, 1.6, 22.6], para: [-24, 2.0, 13] },
+  longa: { nome: 'Longa A, olhando para o arco do site A', de: [-36.3, 1.6, 15.6], para: [-34.6, 1.7, 0] },
+  meio: { nome: 'Meio, olhando as portas', de: [0.9, 1.6, 12.9], para: [-0.2, 1.7, 0] },
+  tunel: { nome: 'Túnel, olhando a janela do B', de: [29.9, 1.6, 14.6], para: [25.2, 1.9, 9.6] },
+  siteA: { nome: 'Chegando ao site A pelo meio', de: [-12, 1.6, 2.5], para: [-32, 2.2, 3] },
+  siteB: { nome: 'Chegando ao site B pelo meio', de: [8, 1.6, -2.5], para: [26, 2.2, -1] },
+  baseB: { nome: 'Saindo da base (lado B)', de: [9.8, 1.6, -22.6], para: [24, 2.0, -13] },
+  longaB: { nome: 'Longa do lado B', de: [-36.3, 1.6, -15.6], para: [-34.6, 1.7, 0] },
+  aereaA: { nome: 'Voo de pássaro, lado A', de: [-48, 26, 48], para: [-8, 0, 4], fov: 55 },
+  aereaB: { nome: 'Voo de pássaro, lado B', de: [48, 26, -48], para: [8, 0, -4], fov: 55 },
+};
+
+const rotulos = document.getElementById('rotulos');
+let camera;
+if (cena === 'cima') {
+  scene.fog = null;
+  const h = 34, w = h * 16 / 9;
+  camera = new THREE.OrthographicCamera(-w, w, h, -h, 1, 300);
+  camera.position.set(0, 120, 0);
+  camera.up.set(0, 0, -1);
+  camera.lookAt(0, 0, 0);
+  const L = [
+    ['BASE A (z > 0)', 0, 25.5], ['BASE B (z < 0)', 0, -25.5], ['LONGA A', -36.5, 9], ['LONGA A', -36.5, -9],
+    ['SITE A', -24.5, 0], ['SITE B', 19.5, 0], ['MEIO', 0, 0], ['portas do meio', 0, 9], ['portas do meio', 0, -9],
+    ['TÚNEL', 28.3, 10], ['TÚNEL', 28.3, -10], ['janela do B', 22, 10.5], ['arco do A', -31.6, 3.4], ['arco do B', 26.6, 3.4],
+    ['portão', -35.3, 18.4], ['portão', -35.3, -18.4], ['xbox', 0, 15], ['carro', -26, 7.6], ['container', -38.5, 12.5],
+    ['container', 22, 7.6], ['mesquita e minarete', 26, 33.2], ['antena', 14.5, -33.2], ['rocha', 46, 0], ['casario', -46, 0],
+  ];
+  for (const [txt, x, z] of L) {
+    const v = new THREE.Vector3(x, 0, z).project(camera);
+    const d = document.createElement('div');
+    d.className = 'rotulo'; d.textContent = txt;
+    d.style.left = `${(v.x + 1) * 640}px`; d.style.top = `${(1 - v.y) * 360}px`;
+    rotulos.append(d);
+  }
+  const t = document.createElement('div'); t.id = 'titulo';
+  t.textContent = 'Block Strike — mapa v2, vista de cima (norte = +z para baixo; sol vem de +x)';
+  document.body.append(t);
+} else {
+  const c = CENAS[cena];
+  camera = new THREE.PerspectiveCamera(c.fov ?? 80, 16 / 9, 0.05, 400);
+  camera.position.set(...c.de);
+  camera.lookAt(...c.para);
+  if (!semDeco && !c.fov) poeira(camera);
+}
+renderer.render(scene, camera);
+window.pronto = true;
+</script>
