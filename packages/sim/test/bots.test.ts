@@ -281,7 +281,7 @@ test('compensação de recuo não sobe para a cabeça', () => {
   // Reescrito no Plano 2: sem `erroMira`; o bot "ideal" agora é a mão do difícil sem tremor, que tenta
   // compensar o recuo (a compensação sai atrasada pela inércia) e nunca escolhe a cabeça.
   const ideal: Dificuldade = {
-    reacao: 0.2, chanceCabeca: 0, toleranciaTiro: 0.05,
+    reacao: 0.2, chanceCabeca: 0, toleranciaTiro: 0.05, trocaParaCabecaApos: 0,
     mao: { atraso: 0.2, firmeza: 16, amortecimento: 0.7, acelMax: 140, tremor: 0, previsao: 0.7 },
   };
   const rng = criarRng(31);

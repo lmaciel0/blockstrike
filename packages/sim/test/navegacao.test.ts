@@ -86,3 +86,26 @@ test('coberturaPerto devolve null sem cobertura segura', () => {
   const g = criarGrafo([{ id: 0, x: 8, z: 0, cobertura: true }], []);
   expect(coberturaPerto(g, { x: 7, y: 0, z: 0 }, { x: 12, y: 0, z: 0 }, [])).toBe(null);
 });
+
+// Losango 0-1-3 e 0-2-3, arestas iguais.
+const losango = criarGrafo(
+  [{ id: 0, x: 0, z: 0 }, { id: 1, x: 10, z: 5 }, { id: 2, x: 10, z: -5 }, { id: 3, x: 20, z: 0 }],
+  [[0, 1], [1, 3], [0, 2], [2, 3]],
+);
+
+test('caminho: proibidos desviam do nó', () => {
+  expect(caminho(losango, 0, 3, new Set([1]))).toStrictEqual([0, 2, 3]);
+});
+
+test('caminho: proibidos que desconectam dão []', () => {
+  expect(caminho(losango, 0, 3, new Set([1, 2]))).toStrictEqual([]);
+});
+
+test('caminho: as pontas nunca são proibidas', () => {
+  expect(caminho(losango, 0, 3, new Set([0, 3, 1]))).toStrictEqual([0, 2, 3]);
+});
+
+test('caminho: sem proibidos é o de hoje', () => {
+  expect(caminho(losango, 0, 3, new Set())).toStrictEqual(caminho(losango, 0, 3));
+  expect(caminho(quadrado, 1, 3, new Set())).toStrictEqual(caminho(quadrado, 1, 3));
+});

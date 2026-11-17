@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { criarMundo, posicionarParaRound, passo } from '../src/mundo.js';
 import { criarBomba } from '../src/bomba.js';
-import { pensar, criarCerebro } from '../src/bots.js';
+import { pensar, criarCerebro, pontoDoPosto } from '../src/bots.js';
 import { criarGrafo } from '../src/navegacao.js';
 import { temVisada } from '../src/fisica.js';
 import { MAPA } from '../src/mapa.js';
@@ -79,7 +79,9 @@ test('CT chega ao posto e mira a entrada', () => {
     for (const e of cts(mundo)) {
       const tag = `seed ${seed}, bot ${e.id}`;
       expect(cerebroDe(e).estado, `${tag}: estado ${cerebroDe(e).estado}`).toBe('posto');
-      expect(dist(e.pos, esperaDe(e)) < 1.5, `${tag}: a ${dist(e.pos, esperaDe(e)).toFixed(2)} m do posto`).toBeTruthy();
+      // Cada CT fica no seu ponto em volta do `espera` (pontoDoPosto), não todos em cima dele.
+      const meu = pontoDoPosto(e, mundo, siteDe(e));
+      expect(dist(e.pos, meu) < 1.5, `${tag}: a ${dist(e.pos, meu).toFixed(2)} m do seu ponto no posto`).toBeTruthy();
       const erro = Math.abs(angulo(e.yaw - yawPara(e.pos, miraDe(e))));
       expect(erro < 0.3, `${tag}: mira fora da entrada (${erro.toFixed(2)} rad)`).toBeTruthy();
     }
@@ -137,7 +139,9 @@ test('cérebro novo usa a metade de onde o bot nasceu, não a do round anterior'
     for (const e of cts(c.mundo)) {
       const tag = `seed ${seed}, bot ${e.id}`;
       expect(cerebroDe(e).estado, `${tag}: estado ${cerebroDe(e).estado}`).toBe('posto');
-      expect(dist(e.pos, esperaDe(e)) < 1.5, `${tag}: a ${dist(e.pos, esperaDe(e)).toFixed(2)} m do posto`).toBeTruthy();
+      // Cada CT fica no seu ponto em volta do `espera` (pontoDoPosto), não todos em cima dele.
+      const meu = pontoDoPosto(e, c.mundo, siteDe(e));
+      expect(dist(e.pos, meu) < 1.5, `${tag}: a ${dist(e.pos, meu).toFixed(2)} m do seu ponto no posto`).toBeTruthy();
     }
   }
 });

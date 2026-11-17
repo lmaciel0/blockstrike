@@ -26,7 +26,7 @@ test('criarArma começa cheia', () => {
 });
 
 test('danoDe aplica o multiplicador da parte', () => {
-  expect(danoDe('rifle', 'cabeca')).toBe(144);
+  expect(danoDe('rifle', 'cabeca')).toBe(90); // 36 × 2,5 (cabeça ×2,5)
   expect(danoDe('rifle', 'pernas')).toBe(27);
   expect(danoDe('sniper', 'tronco')).toBe(115);
   expect(danoDe('faca', 'tronco')).toBe(40);

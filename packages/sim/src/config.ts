@@ -99,7 +99,7 @@ export const MAX_GRANADAS: Record<TipoGranada, number> = { smoke: 1, flash: 2, h
 export const COLETE = { pontos: 100, corpo: 0.55, cabeca: 0.6 };
 
 // Multiplicador de dano por parte do corpo atingida.
-export const MULT_PARTE: Record<ParteCorpo, number> = { cabeca: 4, tronco: 1, pernas: 0.75 };
+export const MULT_PARTE: Record<ParteCorpo, number> = { cabeca: 2.5, tronco: 1, pernas: 0.75 };
 
 // Campo de visão sem zoom (graus); a luneta usa o `zoomFov` da arma.
 export const FOV_PADRAO = 75;
@@ -171,18 +171,21 @@ export const ARMAS: Record<TipoArma, DefArma> = {
 export const familia = (tipo: TipoArma): TipoArma => ARMAS[tipo]?.familia ?? tipo;
 
 // reacao em segundos (>= mao.atraso); chanceCabeca em [0,1]; alturaTronco em m (ponto de mira no corpo);
-// toleranciaTiro em rad; mao = perfil da mão virtual (atraso para começar a mirar, mola, aceleração, tremor e previsão).
+// toleranciaTiro em rad; trocaParaCabecaApos = s com o tronco escondido (e a cabeça à vista) até mirar na cabeça (difícil
+// 0 = na hora); mao = perfil da mão virtual (atraso para começar a mirar, mola, aceleração, tremor e previsão).
+// chanceCabeca do difícil (0,1) fica abaixo da do médio porque o `trocaParaCabecaApos` 0 já leva parte da mira à cabeça.
+// trocaParaCabecaApos do fácil e do médio: o maior valor com 0 mudos e 1º acerto na meta. Varreduras em docs/balanceamento.md.
 export const DIFICULDADE: Record<NomeDificuldade, Dificuldade> = {
   facil: {
-    reacao: 0.75, chanceCabeca: 0.02, alturaTronco: 0.95, toleranciaTiro: 0.05,
+    reacao: 0.75, chanceCabeca: 0.02, alturaTronco: 0.95, toleranciaTiro: 0.05, trocaParaCabecaApos: 0.5,
     mao: { atraso: 0.5, firmeza: 9, amortecimento: 0.55, acelMax: 60, tremor: 0.012, previsao: 0.8 },
   },
   medio: {
-    reacao: 0.5, chanceCabeca: 0.2, alturaTronco: 0.95, toleranciaTiro: 0.035,
+    reacao: 0.5, chanceCabeca: 0.2, alturaTronco: 0.95, toleranciaTiro: 0.035, trocaParaCabecaApos: 0.7,
     mao: { atraso: 0.35, firmeza: 12, amortecimento: 0.6, acelMax: 90, tremor: 0.008, previsao: 0.85 },
   },
   dificil: {
-    reacao: 0.3, chanceCabeca: 0.35, alturaTronco: 1.0, toleranciaTiro: 0.025,
+    reacao: 0.3, chanceCabeca: 0.1, alturaTronco: 1.0, toleranciaTiro: 0.025, trocaParaCabecaApos: 0,
     mao: { atraso: 0.22, firmeza: 16, amortecimento: 0.7, acelMax: 140, tremor: 0.005, previsao: 0.85 },
   },
 };

@@ -31,8 +31,7 @@ Fim da Task 10 (antes da correção da revisão final):
 | médio | 51,4% | 61,2% | 0,88 | 0,00 | 1 | rifle 33,8% | SMG 31,6% |
 | difícil | 54,0% | 67,7% | 0,57 | 0,03 | 1 | rifle 46,0% | SMG 20,8% |
 
-Final (`tools/baseline/varredura-depois.json`, código final com a correção da revisão: no posto a mão é movida
-uma vez só por passo, commit 4b8bf2f):
+Fim do Plano 2 (commit 4b8bf2f; código com a correção da revisão: no posto a mão é movida uma vez só por passo):
 
 | dificuldade | vitória T | headshot | 1º acerto (s) | desenc./partida | mudos | arma topo | 2ª arma |
 |---|---|---|---|---|---|---|---|
@@ -43,6 +42,17 @@ uma vez só por passo, commit 4b8bf2f):
 A correção da revisão mudou o olhar do CT no posto e, com a simulação caótica, moveu a vitória T do difícil de
 54,0% para 58,3% (+4,3 pontos, dentro da variação de ±5 pontos entre blocos de seeds vista na Task 10). Os mudos
 foram a zero e os desencalhes caíram no fácil.
+
+Final (`tools/baseline/varredura-depois.json`, CTs espalhados e headshot, commit 994acfd):
+
+| dificuldade | vitória T | headshot | 1º acerto (s) | desenc./partida | mudos | arma topo | 2ª arma |
+|---|---|---|---|---|---|---|---|
+| fácil | 43,2% | 35,8% | 1,50 | 0,00 | 0 | SMG 26,8% | rifle 25,9% |
+| médio | 42,2% | 39,2% | 1,00 | 0,00 | 0 | rifle 35,3% | SMG 20,8% |
+| difícil | 47,6% | 48,2% | 0,58 | 0,00 | 0 | rifle 44,6% | SMG 15,8% |
+
+Medição intermediária (só CTs espalhados, commit 3fdaa62, antes do headshot): vitória T 40,5 / 39,6 / 49,4%;
+headshot 62,4 / 64,4 / 73,3%; 1º acerto 1,27 / 0,85 / 0,55 s; mudos 0.
 
 Duelo de entrada (`tools/bs-duelo.mjs --cenario=entrada --seeds=1..50`), igual ao da Task 9 em todas as
 dificuldades: mira 0,57 / 0,40 / 0,27 s; 1º tiro 0,77 / 0,58 / 0,32 s; acerto 1,00 / 0,70 / 0,55 s.
@@ -55,6 +65,14 @@ dificuldades: mira 0,57 / 0,40 / 0,27 s; 1º tiro 0,77 / 0,58 / 0,32 s; acerto 1
 | 1 | `ECONOMIA.derrota` | [1400, 1900, 2400, 2900, 3400] → [1900, 2400, 2900, 3400] | no fácil os Ts perdiam e ficavam sem dinheiro (sobra média depois da compra: T $991, CT $1837); o bônus maior segura a bola de neve | 60 seeds (1..60, sozinha): fácil 42,2 → 46,1%; médio 51,0 → 49,3%; difícil 55,0 → 57,0% |
 | 2 | `ITENS.rifle.preco` | $2700 → $3100 (o preço do fuzil) | rifle acima de 35% das kills no médio e no difícil; é a arma mais comprada | com a #1, 30 seeds: rifle no médio 43,6 → 33,8%, no difícil 54,2 → 46,0%; o SMG fica com a diferença |
 | 3 | `DESVIO_MIRA` (posto) | 0,15 rad em todas → fácil 0,6, médio e difícil 0,15 | no fácil o CT parado com a mira pronta na entrada ganhava o duelo de quem entrava | só no fácil (sozinha, 60 seeds): 42,2 → 45,4%; não muda médio, difícil nem o duelo |
+| 4 | `bots.ts`: posto espalhado (b2513a5) | CTs do mesmo site paravam no mesmo ponto → cada CT pega um ponto distinto do posto | bug do playtest: dois CTs andando colados | incluído na #5 (medido junto) |
+| 5 | `bots.ts`: rotas alternativas, `ROTA_ALT_MAX` 1.7 (3fdaa62, 6bb7a65) | CTs do mesmo site iam pelo mesmo caminho → o CT de índice 1 vai por rota diferente | CTs do mesmo site não chegam em fila | com o posto (@3fdaa62), vitória T 42,2 / 51,5 / 58,3% → 40,5 / 39,6 / 49,4% |
+| 6 | H1 (1cef285, cad0647, d52e434): `trocaParaCabeca` | todo bot trocava a mira do tronco escondido para a cabeça → só o difícil troca; bot sem visada do tronco não trava parado | a troca em todo bot explicava o headshot de 58–67% | medido junto com H2 a H4 (tabela Final) |
+| 7 | H2 (a0a8831): `MULT_PARTE` cabeça | ×4 → ×2,5 | headshot 58–67% muito acima da meta | medido junto com H3 e H4 |
+| 8 | H3 (64a0c62): `chanceCabeca` do difícil | 0,35 → 0,1 | com 0,35 o headshot do difícil dava 60%; 0,2 → 55%; 0,1 → 48% (30 seeds) | difícil: headshot 48% |
+| 9 | H4 (994acfd): `trocaParaCabecaApos` (substitui o booleano do H1) | fácil 0,5 s, médio 0,7 s, difícil 0 s | o maior valor com 0 mudos e 1º acerto ≤ 1,5 / 1,0 s. Fácil: 0,55 já tem 1 mudo e 0,6 dá 1,53 s. Médio: 0,7 → headshot 39%, 1º acerto 1,00 s; 0,75 passa de 1,0 s | headshot fácil 35,8%, médio 39,2% |
+
+Efeito final do conjunto (4 a 9): tabela Final acima.
 
 Efeito do conjunto (1 + 2 + 3), vitória T, comparado à calibração:
 
@@ -87,34 +105,18 @@ Alavancas testadas e descartadas (30 seeds, junto com a #1; ruído de ±2–4 po
 
 ## Metas fora da faixa
 
-- **Vitória T no difícil: 58,3% (meta 45–55%), +3,3 pontos no código final.** Era 54,0% no fim da Task 10; a
-  correção da revisão (posto) subiu o difícil. Não houve nova rodada de balanceamento: fica para o dono decidir
-  junto com o headshot, que mexe nos mesmos números.
-- **Vitória T no fácil: 42,2% no código final (41,9% no fim da Task 10; meta 45–55%), −3,1 pontos nas seeds 1..30.** Em 60 seeds o fácil fica em
-  44,4% (−0,6). A diferença entre fácil e difícil (~11–13 pontos) é maior que a largura da faixa (10), e quase
-  toda alavanca permitida move as três dificuldades juntas. As duas que separam (bônus de derrota e desvio do
-  posto) somam ~+2 a +3 pontos no fácil. Mais do que isso tira o difícil da faixa (ver tabela acima).
-  Por que o fácil favorece o CT: o T faz a primeira kill em 55% dos rounds, mas só converte 56% deles (no
-  difícil, 77%). Com mira lenta o CT que sobra segura a posição e ganha o round.
-- **Rifle no difícil: 46,0% das kills (meta ~35%), justificado.** O rifle é a arma mais comprada: é a preferência
-  de 35% dos bots (`PESOS`, fora das alavancas) e a reserva de quem não alcança a sniper (sniper + colete) ou o
-  fuzil. No difícil ~33% dos bots entram no round com o rifle e ele faz 46% das kills: a mira precisa favorece a
-  arma automática mais precisa. Fechar 35% exigiria piorar o rifle (dano ou spread) a ponto de ele perder para o SMG, o que distorce o
-  jogo. Com a #2 o rifle caiu de 54% para 46% e ficou dentro no fácil (29,3%) e no médio (33,8%).
-- **Headshot: 58,0 / 61,2 / 67,7% (meta 15–25 / 30–40 / 40–50%). Decisão do dono pendente.** Diagnóstico da Task 9:
-  a cabeça vale ×4 (`MULT_PARTE`) e o colete reduz o corpo a ×0,55 (`COLETE`). Uma bala na cabeça quase mata e
-  o corpo precisa de ~5; com ~10–18% dos acertos na cabeça, 40–60% das kills já saem na cabeça. Em ~20% dos quadros
-  de mira o tronco está escondido atrás de caixas de 1,2 m e a cabeça não, e a mira troca para a cabeça. Recuo e
-  spread não explicam (recuo zero deixa o headshot igual). As alavancas da Task 9 chegam a um piso de ~53% no fácil.
-  `MULT_PARTE` e `COLETE` não são alavancas desta tarefa: fechar a faixa exige o dono mudar o dano por parte, o
-  colete ou a regra "tronco escondido → cabeça". As mudanças desta tarefa não pioraram o headshot nem o primeiro
-  acerto além do ruído (headshot −0,8 / +1,2 / −0,8 ponto; 1º acerto −0,02 / +0,01 / +0,02 s).
-- **Mudos: 0 / 0 / 0 no código final.** Na Task 10 eram 2 / 1 / 1, deixados de propósito (ruling R14): Os quatro casos (fácil seeds 3 e 19, médio
-  seed 4, difícil seed 23) vêm do `recuo`. O bot leva tiro a ~38 m, fica com hp abaixo de `HP_RECUO` e corre para a
-  cobertura. Em movimento, o `recuo` não chama `atacar`, e o atirador continua visível por ~2–2,7 s. Por isso o bot
-  passa de 3 s "com alvo visto" sem disparar. A Task 10b descartou a hipótese anterior, de que `vistoHa` zerava a
-  cada re-peek do mesmo alvo: com o alvo guardado, a reação não zera (regressão em `bots-mira.test.ts`). Não muda
-  porque correr para a cobertura sem atirar, depois de levar tiro de longe, é comportamento humano. São 4 bots em 90
-  partidas.
-- **Desencalhes: 0,13 / 0,00 / 0,03 por partida** (calibrada: 0,20 / 0 / 0). A armadilha da C4 (R10) foi corrigida
-  (mudança 0). O que sobra são casos isolados (5 desencalhes em 90 partidas).
+Sobre a tabela Final (commit 994acfd).
+
+- **Vitória T no fácil (43,2%) e no médio (42,2%), abaixo de 45%. Aceito pelo dono em 2026-11-16.** Causa: as rotas
+  alternativas dos CTs (o médio caiu ~12 pontos com o posto espalhado e as rotas, 51,5 → 39,6% na medição
+  intermediária). O difícil (47,6%) está dentro da faixa.
+- **Headshot do fácil: 35,8% (meta 15–25%).** Nenhum `trocaParaCabecaApos` com 1º acerto ≤ 1,5 s fecha a faixa (ver a
+  #9). O médio (39,2%) e o difícil (48,2%) estão dentro. No cenário curto de `packages/sim/test/bots-cabeca.test.ts`
+  o headshot dá fácil 19,5 / médio 21,6 / difícil 18,8%: ali a ordem fácil < médio < difícil não vale; na partida
+  (tabela Final) vale.
+- **Rifle: médio 35,3% (0,3 ponto acima de ~35%) e difícil 44,6%, justificado.** O rifle é a arma mais comprada: é a
+  preferência de 35% dos bots (`PESOS`, fora das alavancas) e a reserva de quem não alcança a sniper (sniper + colete)
+  ou o fuzil. A mira precisa favorece a arma automática mais precisa. Fechar 35% exigiria piorar o rifle (dano ou
+  spread) a ponto de ele perder para o SMG, o que distorce o jogo.
+- **Mudos e desencalhes: 0 / 0 / 0.** Os mudos da Task 10 (`recuo` correndo para a cobertura sem atirar) e os
+  desencalhes isolados sumiram na tabela Final.

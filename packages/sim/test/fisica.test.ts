@@ -21,7 +21,8 @@ test('config tem valores exatos', () => {
   expect(JOGADOR.raio).toBe(0.35);
   expect(JOGADOR.hp).toBe(100);
   expect(ROUND.vencer).toBe(13);
-  expect(MULT_PARTE).toStrictEqual({ cabeca: 4, tronco: 1, pernas: 0.75 });
+  // Cabeça ×2,5 (era ×4): varredura rápida pôs headshot de fácil/médio na faixa (22% / 33%).
+  expect(MULT_PARTE).toStrictEqual({ cabeca: 2.5, tronco: 1, pernas: 0.75 });
   expect(ARMAS.faca.pente).toBe(Infinity);
   expect(ARMAS.sniper.zoomFov).toBe(25);
   expect(ARMAS.escopeta.chumbos).toBe(8);
