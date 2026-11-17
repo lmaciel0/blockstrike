@@ -144,6 +144,681 @@
       "hash": "54f74c1a"
     },
     {
+      "dificuldade": "facil",
+      "seed": 6,
+      "rounds": 13,
+      "placar": {
+        "azul": 13,
+        "laranja": 0
+      },
+      "vitoriasT": 1,
+      "vitoriasCT": 12,
+      "mortes": 90,
+      "cabecas": 36,
+      "presos": 0,
+      "dinheiroFinal": [
+        3700,
+        4000,
+        4000,
+        3400,
+        3400,
+        2050,
+        2050,
+        2350,
+        2050,
+        2350
+      ],
+      "hash": "8e14951c"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 7,
+      "rounds": 22,
+      "placar": {
+        "azul": 9,
+        "laranja": 13
+      },
+      "vitoriasT": 7,
+      "vitoriasCT": 15,
+      "mortes": 154,
+      "cabecas": 47,
+      "presos": 0,
+      "dinheiroFinal": [
+        3550,
+        3500,
+        3750,
+        3450,
+        6850,
+        16000,
+        9200,
+        8100,
+        4250,
+        3250
+      ],
+      "hash": "9157d59d"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 8,
+      "rounds": 24,
+      "placar": {
+        "azul": 13,
+        "laranja": 11
+      },
+      "vitoriasT": 13,
+      "vitoriasCT": 11,
+      "mortes": 166,
+      "cabecas": 73,
+      "presos": 0,
+      "dinheiroFinal": [
+        9300,
+        8200,
+        7450,
+        14950,
+        7150,
+        4100,
+        4750,
+        3950,
+        3550,
+        3850
+      ],
+      "hash": "d0682422"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 9,
+      "rounds": 19,
+      "placar": {
+        "azul": 13,
+        "laranja": 6
+      },
+      "vitoriasT": 7,
+      "vitoriasCT": 12,
+      "mortes": 124,
+      "cabecas": 37,
+      "presos": 0,
+      "dinheiroFinal": [
+        6000,
+        5650,
+        3900,
+        7150,
+        3900,
+        2400,
+        7950,
+        6300,
+        3300,
+        2800
+      ],
+      "hash": "3c4125e0"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 10,
+      "rounds": 24,
+      "placar": {
+        "azul": 12,
+        "laranja": 12
+      },
+      "vitoriasT": 14,
+      "vitoriasCT": 10,
+      "mortes": 159,
+      "cabecas": 52,
+      "presos": 0,
+      "dinheiroFinal": [
+        5350,
+        2400,
+        6150,
+        7150,
+        12700,
+        5350,
+        10400,
+        4600,
+        7150,
+        3900
+      ],
+      "hash": "292f8bb6"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 11,
+      "rounds": 17,
+      "placar": {
+        "azul": 13,
+        "laranja": 4
+      },
+      "vitoriasT": 3,
+      "vitoriasCT": 14,
+      "mortes": 102,
+      "cabecas": 35,
+      "presos": 0,
+      "dinheiroFinal": [
+        3900,
+        4600,
+        3250,
+        3250,
+        4250,
+        8500,
+        2950,
+        4350,
+        1950,
+        2000
+      ],
+      "hash": "73e8bae9"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 12,
+      "rounds": 15,
+      "placar": {
+        "azul": 13,
+        "laranja": 2
+      },
+      "vitoriasT": 3,
+      "vitoriasCT": 12,
+      "mortes": 83,
+      "cabecas": 30,
+      "presos": 0,
+      "dinheiroFinal": [
+        7150,
+        3250,
+        5650,
+        5050,
+        5350,
+        2400,
+        2500,
+        2400,
+        3000,
+        2450
+      ],
+      "hash": "6484a512"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 13,
+      "rounds": 15,
+      "placar": {
+        "azul": 13,
+        "laranja": 2
+      },
+      "vitoriasT": 5,
+      "vitoriasCT": 10,
+      "mortes": 103,
+      "cabecas": 35,
+      "presos": 0,
+      "dinheiroFinal": [
+        3250,
+        3900,
+        8350,
+        3350,
+        3400,
+        4100,
+        3650,
+        2900,
+        3200,
+        2900
+      ],
+      "hash": "b00f25a7"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 14,
+      "rounds": 24,
+      "placar": {
+        "azul": 12,
+        "laranja": 12
+      },
+      "vitoriasT": 10,
+      "vitoriasCT": 14,
+      "mortes": 165,
+      "cabecas": 55,
+      "presos": 0,
+      "dinheiroFinal": [
+        3550,
+        3750,
+        3550,
+        3400,
+        3400,
+        7200,
+        3700,
+        4000,
+        3800,
+        16000
+      ],
+      "hash": "a95bb9f0"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 15,
+      "rounds": 21,
+      "placar": {
+        "azul": 13,
+        "laranja": 8
+      },
+      "vitoriasT": 13,
+      "vitoriasCT": 8,
+      "mortes": 135,
+      "cabecas": 55,
+      "presos": 0,
+      "dinheiroFinal": [
+        13750,
+        6950,
+        13550,
+        16000,
+        15900,
+        3400,
+        3700,
+        3750,
+        3400,
+        4450
+      ],
+      "hash": "f6848115"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 16,
+      "rounds": 22,
+      "placar": {
+        "azul": 13,
+        "laranja": 9
+      },
+      "vitoriasT": 11,
+      "vitoriasCT": 11,
+      "mortes": 148,
+      "cabecas": 54,
+      "presos": 0,
+      "dinheiroFinal": [
+        6100,
+        3250,
+        8450,
+        4400,
+        4600,
+        3200,
+        3550,
+        3050,
+        3150,
+        6900
+      ],
+      "hash": "4b0a2bc6"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 17,
+      "rounds": 17,
+      "placar": {
+        "azul": 13,
+        "laranja": 4
+      },
+      "vitoriasT": 7,
+      "vitoriasCT": 10,
+      "mortes": 118,
+      "cabecas": 39,
+      "presos": 0,
+      "dinheiroFinal": [
+        8350,
+        3250,
+        8400,
+        4650,
+        3950,
+        4150,
+        2900,
+        2950,
+        2950,
+        3050
+      ],
+      "hash": "4ecf4217"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 18,
+      "rounds": 23,
+      "placar": {
+        "azul": 13,
+        "laranja": 10
+      },
+      "vitoriasT": 13,
+      "vitoriasCT": 10,
+      "mortes": 137,
+      "cabecas": 53,
+      "presos": 0,
+      "dinheiroFinal": [
+        10050,
+        9950,
+        7550,
+        16000,
+        12150,
+        3450,
+        3450,
+        3550,
+        3500,
+        8000
+      ],
+      "hash": "91777d1c"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 19,
+      "rounds": 21,
+      "placar": {
+        "azul": 8,
+        "laranja": 13
+      },
+      "vitoriasT": 10,
+      "vitoriasCT": 11,
+      "mortes": 147,
+      "cabecas": 52,
+      "presos": 0,
+      "dinheiroFinal": [
+        3500,
+        3400,
+        3450,
+        3550,
+        3400,
+        6450,
+        3300,
+        8350,
+        4950,
+        15050
+      ],
+      "hash": "6c1f7bb8"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 20,
+      "rounds": 24,
+      "placar": {
+        "azul": 11,
+        "laranja": 13
+      },
+      "vitoriasT": 9,
+      "vitoriasCT": 15,
+      "mortes": 154,
+      "cabecas": 47,
+      "presos": 0,
+      "dinheiroFinal": [
+        4300,
+        4150,
+        8700,
+        3550,
+        7300,
+        5750,
+        3400,
+        6050,
+        4050,
+        5250
+      ],
+      "hash": "08689dba"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 21,
+      "rounds": 16,
+      "placar": {
+        "azul": 13,
+        "laranja": 3
+      },
+      "vitoriasT": 5,
+      "vitoriasCT": 11,
+      "mortes": 106,
+      "cabecas": 36,
+      "presos": 0,
+      "dinheiroFinal": [
+        7900,
+        7550,
+        7100,
+        4900,
+        10000,
+        4250,
+        2950,
+        4150,
+        2950,
+        2950
+      ],
+      "hash": "e23ce17e"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 22,
+      "rounds": 16,
+      "placar": {
+        "azul": 13,
+        "laranja": 3
+      },
+      "vitoriasT": 5,
+      "vitoriasCT": 11,
+      "mortes": 111,
+      "cabecas": 41,
+      "presos": 0,
+      "dinheiroFinal": [
+        3900,
+        3600,
+        7200,
+        6400,
+        8600,
+        3300,
+        3650,
+        3050,
+        2950,
+        3050
+      ],
+      "hash": "2497b3c4"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 23,
+      "rounds": 17,
+      "placar": {
+        "azul": 13,
+        "laranja": 4
+      },
+      "vitoriasT": 7,
+      "vitoriasCT": 10,
+      "mortes": 109,
+      "cabecas": 48,
+      "presos": 0,
+      "dinheiroFinal": [
+        7550,
+        5100,
+        10150,
+        10850,
+        6800,
+        3500,
+        3500,
+        3450,
+        3500,
+        3400
+      ],
+      "hash": "5a43b93c"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 24,
+      "rounds": 19,
+      "placar": {
+        "azul": 6,
+        "laranja": 13
+      },
+      "vitoriasT": 12,
+      "vitoriasCT": 7,
+      "mortes": 124,
+      "cabecas": 48,
+      "presos": 0,
+      "dinheiroFinal": [
+        2050,
+        1950,
+        1900,
+        2050,
+        1900,
+        3300,
+        3400,
+        3600,
+        4750,
+        3850
+      ],
+      "hash": "869c6333"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 25,
+      "rounds": 24,
+      "placar": {
+        "azul": 12,
+        "laranja": 12
+      },
+      "vitoriasT": 18,
+      "vitoriasCT": 6,
+      "mortes": 165,
+      "cabecas": 48,
+      "presos": 0,
+      "dinheiroFinal": [
+        3350,
+        4500,
+        14100,
+        12900,
+        16000,
+        4500,
+        4150,
+        6700,
+        3550,
+        5800
+      ],
+      "hash": "47f3f939"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 26,
+      "rounds": 20,
+      "placar": {
+        "azul": 13,
+        "laranja": 6
+      },
+      "vitoriasT": 10,
+      "vitoriasCT": 9,
+      "mortes": 138,
+      "cabecas": 53,
+      "presos": 0,
+      "dinheiroFinal": [
+        6350,
+        13750,
+        4050,
+        14600,
+        6550,
+        3400,
+        3450,
+        3400,
+        3500,
+        3550
+      ],
+      "hash": "4ba05fb8"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 27,
+      "rounds": 15,
+      "placar": {
+        "azul": 2,
+        "laranja": 13
+      },
+      "vitoriasT": 10,
+      "vitoriasCT": 5,
+      "mortes": 104,
+      "cabecas": 28,
+      "presos": 0,
+      "dinheiroFinal": [
+        3200,
+        3500,
+        3500,
+        2950,
+        3500,
+        5700,
+        3350,
+        3300,
+        4550,
+        3400
+      ],
+      "hash": "0abed8e3"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 28,
+      "rounds": 14,
+      "placar": {
+        "azul": 13,
+        "laranja": 1
+      },
+      "vitoriasT": 1,
+      "vitoriasCT": 13,
+      "mortes": 85,
+      "cabecas": 25,
+      "presos": 0,
+      "dinheiroFinal": [
+        3400,
+        4000,
+        4000,
+        4450,
+        3550,
+        1900,
+        1900,
+        1900,
+        1950,
+        2200
+      ],
+      "hash": "56610b69"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 29,
+      "rounds": 22,
+      "placar": {
+        "azul": 9,
+        "laranja": 13
+      },
+      "vitoriasT": 11,
+      "vitoriasCT": 11,
+      "mortes": 137,
+      "cabecas": 62,
+      "presos": 0,
+      "dinheiroFinal": [
+        3050,
+        3050,
+        2900,
+        3000,
+        2900,
+        8900,
+        7350,
+        7000,
+        7650,
+        3400
+      ],
+      "hash": "684247a1"
+    },
+    {
+      "dificuldade": "facil",
+      "seed": 30,
+      "rounds": 21,
+      "placar": {
+        "azul": 8,
+        "laranja": 13
+      },
+      "vitoriasT": 8,
+      "vitoriasCT": 13,
+      "mortes": 140,
+      "cabecas": 54,
+      "presos": 0,
+      "dinheiroFinal": [
+        5400,
+        3550,
+        3600,
+        5500,
+        5100,
+        3250,
+        8300,
+        8950,
+        3250,
+        8000
+      ],
+      "hash": "e9cadb7c"
+    },
+    {
       "dificuldade": "medio",
       "seed": 1,
       "rounds": 21,
@@ -279,6 +954,681 @@
       "hash": "6f2600e9"
     },
     {
+      "dificuldade": "medio",
+      "seed": 6,
+      "rounds": 20,
+      "placar": {
+        "azul": 13,
+        "laranja": 7
+      },
+      "vitoriasT": 15,
+      "vitoriasCT": 5,
+      "mortes": 138,
+      "cabecas": 52,
+      "presos": 0,
+      "dinheiroFinal": [
+        14750,
+        4550,
+        14350,
+        13050,
+        12700,
+        3400,
+        3450,
+        3400,
+        3400,
+        3400
+      ],
+      "hash": "1f384aa0"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 7,
+      "rounds": 20,
+      "placar": {
+        "azul": 7,
+        "laranja": 13
+      },
+      "vitoriasT": 13,
+      "vitoriasCT": 7,
+      "mortes": 147,
+      "cabecas": 51,
+      "presos": 0,
+      "dinheiroFinal": [
+        3550,
+        4600,
+        3550,
+        4700,
+        6950,
+        4000,
+        6550,
+        9200,
+        5550,
+        4800
+      ],
+      "hash": "4e4b5fdf"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 8,
+      "rounds": 14,
+      "placar": {
+        "azul": 13,
+        "laranja": 1
+      },
+      "vitoriasT": 1,
+      "vitoriasCT": 13,
+      "mortes": 91,
+      "cabecas": 36,
+      "presos": 0,
+      "dinheiroFinal": [
+        4250,
+        3400,
+        4000,
+        4000,
+        3400,
+        1950,
+        2250,
+        2350,
+        1900,
+        2000
+      ],
+      "hash": "69e59517"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 9,
+      "rounds": 23,
+      "placar": {
+        "azul": 10,
+        "laranja": 13
+      },
+      "vitoriasT": 2,
+      "vitoriasCT": 21,
+      "mortes": 151,
+      "cabecas": 66,
+      "presos": 0,
+      "dinheiroFinal": [
+        3800,
+        3500,
+        3450,
+        3400,
+        3450,
+        16000,
+        12000,
+        16000,
+        16000,
+        16000
+      ],
+      "hash": "57c8ad12"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 10,
+      "rounds": 22,
+      "placar": {
+        "azul": 9,
+        "laranja": 13
+      },
+      "vitoriasT": 11,
+      "vitoriasCT": 11,
+      "mortes": 144,
+      "cabecas": 59,
+      "presos": 0,
+      "dinheiroFinal": [
+        3500,
+        3550,
+        3400,
+        3400,
+        3400,
+        4700,
+        8000,
+        8200,
+        5200,
+        8050
+      ],
+      "hash": "da91952d"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 11,
+      "rounds": 24,
+      "placar": {
+        "azul": 12,
+        "laranja": 12
+      },
+      "vitoriasT": 22,
+      "vitoriasCT": 2,
+      "mortes": 151,
+      "cabecas": 56,
+      "presos": 0,
+      "dinheiroFinal": [
+        16000,
+        12300,
+        3950,
+        16000,
+        16000,
+        3400,
+        3450,
+        3450,
+        3500,
+        3650
+      ],
+      "hash": "79d002c9"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 12,
+      "rounds": 14,
+      "placar": {
+        "azul": 13,
+        "laranja": 1
+      },
+      "vitoriasT": 3,
+      "vitoriasCT": 11,
+      "mortes": 90,
+      "cabecas": 25,
+      "presos": 0,
+      "dinheiroFinal": [
+        3600,
+        4250,
+        3550,
+        3300,
+        3500,
+        2500,
+        2400,
+        2550,
+        2500,
+        3000
+      ],
+      "hash": "b4232ff3"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 13,
+      "rounds": 16,
+      "placar": {
+        "azul": 13,
+        "laranja": 3
+      },
+      "vitoriasT": 3,
+      "vitoriasCT": 13,
+      "mortes": 104,
+      "cabecas": 32,
+      "presos": 0,
+      "dinheiroFinal": [
+        4600,
+        3300,
+        4450,
+        3250,
+        3600,
+        7650,
+        3450,
+        1950,
+        2000,
+        5200
+      ],
+      "hash": "825b436c"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 14,
+      "rounds": 19,
+      "placar": {
+        "azul": 6,
+        "laranja": 13
+      },
+      "vitoriasT": 10,
+      "vitoriasCT": 9,
+      "mortes": 126,
+      "cabecas": 42,
+      "presos": 0,
+      "dinheiroFinal": [
+        2900,
+        3000,
+        2900,
+        3000,
+        3000,
+        8250,
+        3700,
+        3400,
+        3850,
+        4650
+      ],
+      "hash": "1348484f"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 15,
+      "rounds": 22,
+      "placar": {
+        "azul": 9,
+        "laranja": 13
+      },
+      "vitoriasT": 11,
+      "vitoriasCT": 11,
+      "mortes": 145,
+      "cabecas": 51,
+      "presos": 0,
+      "dinheiroFinal": [
+        3500,
+        3850,
+        3550,
+        4150,
+        3800,
+        14100,
+        6800,
+        4350,
+        12350,
+        12550
+      ],
+      "hash": "aa287309"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 16,
+      "rounds": 24,
+      "placar": {
+        "azul": 12,
+        "laranja": 12
+      },
+      "vitoriasT": 6,
+      "vitoriasCT": 18,
+      "mortes": 163,
+      "cabecas": 59,
+      "presos": 0,
+      "dinheiroFinal": [
+        6100,
+        3400,
+        10150,
+        6350,
+        9050,
+        7600,
+        3900,
+        3700,
+        8700,
+        5150
+      ],
+      "hash": "524ec5b9"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 17,
+      "rounds": 22,
+      "placar": {
+        "azul": 13,
+        "laranja": 9
+      },
+      "vitoriasT": 13,
+      "vitoriasCT": 9,
+      "mortes": 150,
+      "cabecas": 64,
+      "presos": 0,
+      "dinheiroFinal": [
+        6850,
+        11300,
+        14450,
+        7450,
+        9200,
+        3400,
+        3400,
+        3450,
+        3550,
+        3450
+      ],
+      "hash": "a400c1de"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 18,
+      "rounds": 15,
+      "placar": {
+        "azul": 13,
+        "laranja": 2
+      },
+      "vitoriasT": 5,
+      "vitoriasCT": 10,
+      "mortes": 100,
+      "cabecas": 43,
+      "presos": 0,
+      "dinheiroFinal": [
+        5600,
+        5500,
+        3300,
+        6650,
+        4750,
+        2900,
+        2900,
+        2900,
+        2900,
+        3250
+      ],
+      "hash": "2c4dfa35"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 19,
+      "rounds": 23,
+      "placar": {
+        "azul": 13,
+        "laranja": 10
+      },
+      "vitoriasT": 13,
+      "vitoriasCT": 10,
+      "mortes": 154,
+      "cabecas": 67,
+      "presos": 0,
+      "dinheiroFinal": [
+        7250,
+        5250,
+        3250,
+        5650,
+        11950,
+        3800,
+        3400,
+        4150,
+        3500,
+        4750
+      ],
+      "hash": "04578065"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 20,
+      "rounds": 23,
+      "placar": {
+        "azul": 10,
+        "laranja": 13
+      },
+      "vitoriasT": 10,
+      "vitoriasCT": 13,
+      "mortes": 146,
+      "cabecas": 65,
+      "presos": 0,
+      "dinheiroFinal": [
+        4950,
+        2900,
+        6200,
+        2900,
+        5900,
+        3400,
+        3350,
+        4500,
+        4450,
+        5350
+      ],
+      "hash": "812e7927"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 21,
+      "rounds": 16,
+      "placar": {
+        "azul": 13,
+        "laranja": 3
+      },
+      "vitoriasT": 5,
+      "vitoriasCT": 11,
+      "mortes": 96,
+      "cabecas": 33,
+      "presos": 0,
+      "dinheiroFinal": [
+        8550,
+        8000,
+        8000,
+        9700,
+        6250,
+        3050,
+        3050,
+        3050,
+        3250,
+        2950
+      ],
+      "hash": "4b21faa3"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 22,
+      "rounds": 16,
+      "placar": {
+        "azul": 13,
+        "laranja": 3
+      },
+      "vitoriasT": 5,
+      "vitoriasCT": 11,
+      "mortes": 112,
+      "cabecas": 45,
+      "presos": 0,
+      "dinheiroFinal": [
+        3700,
+        4200,
+        3300,
+        3250,
+        3700,
+        2800,
+        4300,
+        2550,
+        2550,
+        2400
+      ],
+      "hash": "65ebc10d"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 23,
+      "rounds": 24,
+      "placar": {
+        "azul": 13,
+        "laranja": 11
+      },
+      "vitoriasT": 17,
+      "vitoriasCT": 7,
+      "mortes": 150,
+      "cabecas": 47,
+      "presos": 0,
+      "dinheiroFinal": [
+        11050,
+        3700,
+        14550,
+        3250,
+        15350,
+        4350,
+        3550,
+        4650,
+        4350,
+        4950
+      ],
+      "hash": "4fa0671e"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 24,
+      "rounds": 22,
+      "placar": {
+        "azul": 9,
+        "laranja": 13
+      },
+      "vitoriasT": 9,
+      "vitoriasCT": 13,
+      "mortes": 141,
+      "cabecas": 64,
+      "presos": 0,
+      "dinheiroFinal": [
+        3750,
+        3500,
+        4350,
+        4300,
+        4250,
+        4400,
+        3400,
+        4250,
+        3400,
+        6800
+      ],
+      "hash": "4f235799"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 25,
+      "rounds": 24,
+      "placar": {
+        "azul": 12,
+        "laranja": 12
+      },
+      "vitoriasT": 2,
+      "vitoriasCT": 22,
+      "mortes": 160,
+      "cabecas": 66,
+      "presos": 0,
+      "dinheiroFinal": [
+        3600,
+        3300,
+        5400,
+        4150,
+        6450,
+        16000,
+        16000,
+        5550,
+        3200,
+        16000
+      ],
+      "hash": "da540e36"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 26,
+      "rounds": 15,
+      "placar": {
+        "azul": 13,
+        "laranja": 2
+      },
+      "vitoriasT": 1,
+      "vitoriasCT": 14,
+      "mortes": 95,
+      "cabecas": 36,
+      "presos": 0,
+      "dinheiroFinal": [
+        4500,
+        3850,
+        3250,
+        3850,
+        3900,
+        3250,
+        2550,
+        3950,
+        3550,
+        4250
+      ],
+      "hash": "4a9527c9"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 27,
+      "rounds": 19,
+      "placar": {
+        "azul": 13,
+        "laranja": 6
+      },
+      "vitoriasT": 5,
+      "vitoriasCT": 14,
+      "mortes": 138,
+      "cabecas": 62,
+      "presos": 0,
+      "dinheiroFinal": [
+        3950,
+        5050,
+        3250,
+        4000,
+        3400,
+        6600,
+        5650,
+        2550,
+        4650,
+        6200
+      ],
+      "hash": "79a0a76b"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 28,
+      "rounds": 15,
+      "placar": {
+        "azul": 13,
+        "laranja": 2
+      },
+      "vitoriasT": 3,
+      "vitoriasCT": 12,
+      "mortes": 90,
+      "cabecas": 35,
+      "presos": 0,
+      "dinheiroFinal": [
+        3250,
+        3250,
+        3250,
+        5050,
+        4450,
+        4500,
+        2850,
+        2700,
+        3250,
+        3850
+      ],
+      "hash": "07dafb94"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 29,
+      "rounds": 14,
+      "placar": {
+        "azul": 13,
+        "laranja": 1
+      },
+      "vitoriasT": 3,
+      "vitoriasCT": 11,
+      "mortes": 87,
+      "cabecas": 31,
+      "presos": 0,
+      "dinheiroFinal": [
+        3250,
+        3850,
+        3250,
+        3250,
+        4250,
+        2550,
+        2550,
+        2500,
+        2550,
+        2550
+      ],
+      "hash": "7a813591"
+    },
+    {
+      "dificuldade": "medio",
+      "seed": 30,
+      "rounds": 20,
+      "placar": {
+        "azul": 13,
+        "laranja": 7
+      },
+      "vitoriasT": 13,
+      "vitoriasCT": 7,
+      "mortes": 134,
+      "cabecas": 49,
+      "presos": 0,
+      "dinheiroFinal": [
+        13600,
+        4350,
+        8400,
+        9800,
+        12600,
+        3450,
+        3550,
+        3550,
+        4300,
+        3450
+      ],
+      "hash": "62cef449"
+    },
+    {
       "dificuldade": "dificil",
       "seed": 1,
       "rounds": 16,
@@ -412,6 +1762,681 @@
         8500
       ],
       "hash": "5caaa7a7"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 6,
+      "rounds": 24,
+      "placar": {
+        "azul": 11,
+        "laranja": 13
+      },
+      "vitoriasT": 15,
+      "vitoriasCT": 9,
+      "mortes": 161,
+      "cabecas": 91,
+      "presos": 0,
+      "dinheiroFinal": [
+        9150,
+        1900,
+        16000,
+        8050,
+        9500,
+        3600,
+        3550,
+        3550,
+        3350,
+        3850
+      ],
+      "hash": "665dd2f4"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 7,
+      "rounds": 14,
+      "placar": {
+        "azul": 1,
+        "laranja": 13
+      },
+      "vitoriasT": 11,
+      "vitoriasCT": 3,
+      "mortes": 78,
+      "cabecas": 42,
+      "presos": 0,
+      "dinheiroFinal": [
+        2550,
+        2550,
+        2550,
+        2550,
+        2550,
+        3250,
+        3900,
+        3650,
+        3950,
+        3700
+      ],
+      "hash": "ac59f70c"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 8,
+      "rounds": 15,
+      "placar": {
+        "azul": 13,
+        "laranja": 2
+      },
+      "vitoriasT": 1,
+      "vitoriasCT": 14,
+      "mortes": 90,
+      "cabecas": 58,
+      "presos": 0,
+      "dinheiroFinal": [
+        4500,
+        3900,
+        3850,
+        3850,
+        3300,
+        3550,
+        3600,
+        3400,
+        5250,
+        3750
+      ],
+      "hash": "07431c35"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 9,
+      "rounds": 20,
+      "placar": {
+        "azul": 13,
+        "laranja": 7
+      },
+      "vitoriasT": 9,
+      "vitoriasCT": 11,
+      "mortes": 126,
+      "cabecas": 72,
+      "presos": 0,
+      "dinheiroFinal": [
+        10950,
+        7750,
+        11200,
+        9600,
+        9550,
+        3750,
+        3500,
+        3600,
+        5250,
+        3450
+      ],
+      "hash": "97944d86"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 10,
+      "rounds": 18,
+      "placar": {
+        "azul": 13,
+        "laranja": 5
+      },
+      "vitoriasT": 9,
+      "vitoriasCT": 9,
+      "mortes": 130,
+      "cabecas": 55,
+      "presos": 0,
+      "dinheiroFinal": [
+        9100,
+        3900,
+        3950,
+        6500,
+        7750,
+        5250,
+        3500,
+        3450,
+        5550,
+        3550
+      ],
+      "hash": "095fac7b"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 11,
+      "rounds": 24,
+      "placar": {
+        "azul": 13,
+        "laranja": 11
+      },
+      "vitoriasT": 13,
+      "vitoriasCT": 11,
+      "mortes": 167,
+      "cabecas": 83,
+      "presos": 0,
+      "dinheiroFinal": [
+        11350,
+        3350,
+        5250,
+        3900,
+        12850,
+        4350,
+        3500,
+        5250,
+        3500,
+        3850
+      ],
+      "hash": "019db782"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 12,
+      "rounds": 15,
+      "placar": {
+        "azul": 13,
+        "laranja": 2
+      },
+      "vitoriasT": 5,
+      "vitoriasCT": 10,
+      "mortes": 94,
+      "cabecas": 42,
+      "presos": 0,
+      "dinheiroFinal": [
+        6200,
+        5000,
+        4000,
+        5500,
+        6050,
+        2900,
+        2900,
+        3550,
+        2900,
+        2950
+      ],
+      "hash": "48f9fe42"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 13,
+      "rounds": 24,
+      "placar": {
+        "azul": 12,
+        "laranja": 12
+      },
+      "vitoriasT": 16,
+      "vitoriasCT": 8,
+      "mortes": 159,
+      "cabecas": 66,
+      "presos": 0,
+      "dinheiroFinal": [
+        13100,
+        3650,
+        7600,
+        7700,
+        14800,
+        3550,
+        3500,
+        3550,
+        4050,
+        3450
+      ],
+      "hash": "a8c38e95"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 14,
+      "rounds": 17,
+      "placar": {
+        "azul": 13,
+        "laranja": 4
+      },
+      "vitoriasT": 7,
+      "vitoriasCT": 10,
+      "mortes": 123,
+      "cabecas": 73,
+      "presos": 0,
+      "dinheiroFinal": [
+        11500,
+        3250,
+        6450,
+        5900,
+        8800,
+        3450,
+        3400,
+        3500,
+        3550,
+        4600
+      ],
+      "hash": "a37fdcd3"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 15,
+      "rounds": 22,
+      "placar": {
+        "azul": 13,
+        "laranja": 9
+      },
+      "vitoriasT": 7,
+      "vitoriasCT": 15,
+      "mortes": 142,
+      "cabecas": 63,
+      "presos": 0,
+      "dinheiroFinal": [
+        3600,
+        5250,
+        6350,
+        6050,
+        5950,
+        2550,
+        5850,
+        2500,
+        2550,
+        6750
+      ],
+      "hash": "a42780d0"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 16,
+      "rounds": 14,
+      "placar": {
+        "azul": 13,
+        "laranja": 1
+      },
+      "vitoriasT": 1,
+      "vitoriasCT": 13,
+      "mortes": 89,
+      "cabecas": 50,
+      "presos": 0,
+      "dinheiroFinal": [
+        3350,
+        3950,
+        5200,
+        4000,
+        3250,
+        1900,
+        1900,
+        1900,
+        2900,
+        2300
+      ],
+      "hash": "1a443222"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 17,
+      "rounds": 19,
+      "placar": {
+        "azul": 13,
+        "laranja": 6
+      },
+      "vitoriasT": 13,
+      "vitoriasCT": 6,
+      "mortes": 115,
+      "cabecas": 56,
+      "presos": 0,
+      "dinheiroFinal": [
+        16000,
+        9150,
+        10850,
+        16000,
+        16000,
+        3400,
+        3450,
+        3450,
+        4000,
+        3450
+      ],
+      "hash": "b2b93585"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 18,
+      "rounds": 18,
+      "placar": {
+        "azul": 13,
+        "laranja": 5
+      },
+      "vitoriasT": 11,
+      "vitoriasCT": 7,
+      "mortes": 104,
+      "cabecas": 61,
+      "presos": 0,
+      "dinheiroFinal": [
+        15450,
+        12750,
+        13650,
+        12200,
+        13300,
+        4350,
+        3450,
+        3400,
+        3400,
+        3500
+      ],
+      "hash": "ddfea2d7"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 19,
+      "rounds": 17,
+      "placar": {
+        "azul": 13,
+        "laranja": 4
+      },
+      "vitoriasT": 5,
+      "vitoriasCT": 12,
+      "mortes": 106,
+      "cabecas": 60,
+      "presos": 0,
+      "dinheiroFinal": [
+        3650,
+        5600,
+        9400,
+        4750,
+        3950,
+        4100,
+        3050,
+        4050,
+        2900,
+        2950
+      ],
+      "hash": "18d11dbe"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 20,
+      "rounds": 24,
+      "placar": {
+        "azul": 12,
+        "laranja": 12
+      },
+      "vitoriasT": 10,
+      "vitoriasCT": 14,
+      "mortes": 163,
+      "cabecas": 71,
+      "presos": 0,
+      "dinheiroFinal": [
+        10750,
+        3350,
+        13050,
+        3650,
+        11300,
+        4350,
+        2550,
+        2550,
+        6100,
+        15150
+      ],
+      "hash": "78596917"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 21,
+      "rounds": 18,
+      "placar": {
+        "azul": 13,
+        "laranja": 5
+      },
+      "vitoriasT": 11,
+      "vitoriasCT": 7,
+      "mortes": 109,
+      "cabecas": 47,
+      "presos": 0,
+      "dinheiroFinal": [
+        11950,
+        6600,
+        6100,
+        7650,
+        13050,
+        3450,
+        3450,
+        3500,
+        3400,
+        3450
+      ],
+      "hash": "ac8cacfe"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 22,
+      "rounds": 23,
+      "placar": {
+        "azul": 13,
+        "laranja": 10
+      },
+      "vitoriasT": 7,
+      "vitoriasCT": 16,
+      "mortes": 150,
+      "cabecas": 69,
+      "presos": 0,
+      "dinheiroFinal": [
+        3300,
+        3300,
+        5100,
+        4850,
+        3400,
+        8200,
+        2700,
+        4500,
+        6700,
+        2450
+      ],
+      "hash": "6fa981d6"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 23,
+      "rounds": 13,
+      "placar": {
+        "azul": 13,
+        "laranja": 0
+      },
+      "vitoriasT": 1,
+      "vitoriasCT": 12,
+      "mortes": 77,
+      "cabecas": 31,
+      "presos": 0,
+      "dinheiroFinal": [
+        4300,
+        3400,
+        3400,
+        4000,
+        3400,
+        2350,
+        2050,
+        2050,
+        2650,
+        2050
+      ],
+      "hash": "4c8d68e2"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 24,
+      "rounds": 15,
+      "placar": {
+        "azul": 2,
+        "laranja": 13
+      },
+      "vitoriasT": 10,
+      "vitoriasCT": 5,
+      "mortes": 97,
+      "cabecas": 43,
+      "presos": 0,
+      "dinheiroFinal": [
+        3850,
+        2950,
+        2900,
+        2900,
+        2900,
+        4200,
+        3400,
+        3900,
+        3300,
+        5800
+      ],
+      "hash": "d08fd420"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 25,
+      "rounds": 16,
+      "placar": {
+        "azul": 3,
+        "laranja": 13
+      },
+      "vitoriasT": 9,
+      "vitoriasCT": 7,
+      "mortes": 107,
+      "cabecas": 49,
+      "presos": 0,
+      "dinheiroFinal": [
+        4150,
+        3550,
+        3400,
+        3400,
+        3400,
+        7050,
+        6250,
+        3250,
+        7450,
+        4150
+      ],
+      "hash": "3c6272ad"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 26,
+      "rounds": 15,
+      "placar": {
+        "azul": 13,
+        "laranja": 2
+      },
+      "vitoriasT": 1,
+      "vitoriasCT": 14,
+      "mortes": 87,
+      "cabecas": 48,
+      "presos": 0,
+      "dinheiroFinal": [
+        3550,
+        3250,
+        4450,
+        3300,
+        4450,
+        3800,
+        3500,
+        3750,
+        2000,
+        3850
+      ],
+      "hash": "85fa3b70"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 27,
+      "rounds": 21,
+      "placar": {
+        "azul": 13,
+        "laranja": 8
+      },
+      "vitoriasT": 17,
+      "vitoriasCT": 4,
+      "mortes": 133,
+      "cabecas": 50,
+      "presos": 0,
+      "dinheiroFinal": [
+        16000,
+        14850,
+        16000,
+        11600,
+        14200,
+        3400,
+        3450,
+        3500,
+        3450,
+        3450
+      ],
+      "hash": "c77791ec"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 28,
+      "rounds": 24,
+      "placar": {
+        "azul": 11,
+        "laranja": 13
+      },
+      "vitoriasT": 11,
+      "vitoriasCT": 13,
+      "mortes": 159,
+      "cabecas": 74,
+      "presos": 0,
+      "dinheiroFinal": [
+        7400,
+        2950,
+        7600,
+        10000,
+        7950,
+        4250,
+        13550,
+        5450,
+        5150,
+        7400
+      ],
+      "hash": "ca287ac2"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 29,
+      "rounds": 20,
+      "placar": {
+        "azul": 13,
+        "laranja": 7
+      },
+      "vitoriasT": 13,
+      "vitoriasCT": 7,
+      "mortes": 133,
+      "cabecas": 65,
+      "presos": 0,
+      "dinheiroFinal": [
+        9150,
+        7700,
+        12450,
+        5500,
+        12500,
+        3400,
+        3400,
+        3700,
+        3750,
+        4050
+      ],
+      "hash": "b8bb932e"
+    },
+    {
+      "dificuldade": "dificil",
+      "seed": 30,
+      "rounds": 17,
+      "placar": {
+        "azul": 4,
+        "laranja": 13
+      },
+      "vitoriasT": 8,
+      "vitoriasCT": 9,
+      "mortes": 106,
+      "cabecas": 51,
+      "presos": 0,
+      "dinheiroFinal": [
+        3700,
+        3400,
+        3450,
+        3450,
+        4150,
+        10600,
+        10300,
+        11200,
+        8400,
+        10900
+      ],
+      "hash": "531cf1ed"
     }
   ]
 }
